@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="../ASP.NET-Core-MVC/Full/SmartAdmin/SmartAdmin.csproj" />
+  <Project Path="PremierFlow.Application/PremierFlow.Application.csproj" />
+  <Project Path="PremierFlow.Domain/PremierFlow.Domain.csproj" />
+  <Project Path="PremierFlow.Infrastructure/PremierFlow.Infrastructure.csproj" />
+  <Project Path="PremierFlow.WebAPI/PremierFlow.WebAPI.csproj" />
+</Solution>

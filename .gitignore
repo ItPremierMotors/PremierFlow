@@ -1,0 +1,79 @@
+# =========================
+# Compilación y build
+# =========================
+bin/
+obj/
+publish/
+PublishOutput/
+
+# =========================
+# Visual Studio
+# =========================
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# =========================
+# VS Code
+# =========================
+.vscode/
+
+# =========================
+# Configuración local y secretos
+# =========================
+appsettings.Development.json
+appsettings.Local.json
+*.local.json
+.env
+secrets.json
+
+# =========================
+# NuGet
+# =========================
+*.nupkg
+packages/
+project.lock.json
+
+# =========================
+# Node.js (para SmartAdmin)
+# =========================
+node_modules/
+bun.lockb
+
+# =========================
+# Logs
+# =========================
+logs/
+*.log
+
+# =========================
+# Sistema operativo
+# =========================
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# =========================
+# Archivos temporales
+# =========================
+*.tmp
+*.temp
+*.cache
+
+# =========================
+# Entity Framework
+# =========================
+*.Designer.cs.bak
+
+# =========================
+# Archivos HTTP de prueba (opcional)
+# =========================
+*.http
+
+# =========================
+# wwwroot uploads (si aplica)
+# =========================
+**/wwwroot/uploads/
+**/wwwroot/temp/
