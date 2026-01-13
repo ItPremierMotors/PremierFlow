@@ -30,6 +30,10 @@ namespace PremierFlow.Domain.Entities
         /// Contador de inasistencias (no-show).
         /// </summary>
         public int NoShowCount { get; set; } = 0;
+        /// <summary>
+        /// FK opcional para vincular cliente con usuario del sistema.
+        /// </summary>
+        public string? UsuarioId { get; set; }
 
         // Navegación
         public virtual ICollection<Vehiculo> Vehiculos { get; set; } = new List<Vehiculo>();
@@ -41,7 +45,7 @@ namespace PremierFlow.Domain.Entities
             ? Nombre
             : $"{Nombre} {Apellidos}";
 
-        public void IncrementarNoShow() => NoShowCount++;
+        public void IncrementarNoShow() =>              ++;
 
         public bool TieneAlertaNoShow => NoShowCount >= 3;
 

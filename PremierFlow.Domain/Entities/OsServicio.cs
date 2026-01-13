@@ -32,7 +32,7 @@ namespace PremierFlow.Domain.Entities
 
         public DateTime? FechaFin { get; set; }
 
-        public int? TecnicoAsignado { get; set; }
+        public int? TecnicoAsignadoId { get; set; }
 
         public string? Observaciones { get; set; }
 

@@ -39,8 +39,10 @@ namespace PremierFlow.Domain.Entities
         public bool PermiteAgendamiento { get; set; } = true;
 
         public string? Observaciones { get; set; }
+        public int? SucursalId { get; set; }
 
         // Navegación
+        public virtual Sucursal? Sucursal { get; set; }
         public virtual ICollection<BloqueHorario> BloquesHorario { get; set; } = new List<BloqueHorario>();
 
         // Métodos de dominio

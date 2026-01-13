@@ -15,5 +15,7 @@ namespace PremierFlow.Domain.Entities
         public string Ciudad { get; set; } = null!; // "San Pedro Sula", "Tegucigalpa"
         public string? Direccion { get; set; } 
         public bool Activa { get; set; } = true;
+        // Navegación
+        public virtual ICollection<Ubicacion> Ubicaciones { get; set; } = new List<Ubicacion>();
     }
 }

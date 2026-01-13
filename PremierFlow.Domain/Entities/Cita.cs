@@ -42,12 +42,13 @@ namespace PremierFlow.Domain.Entities
         /// Número de pre-orden generado.
         /// </summary>
         public string? PreOrdenId { get; set; }
-
+        public int? SucursalId { get; set; }
         // Navegación
         public virtual Cliente Cliente { get; set; } = null!;
         public virtual Vehiculo Vehiculo { get; set; } = null!;
         public virtual TipoServicio TipoServicio { get; set; } = null!;
         public virtual OrdenServicio? OrdenServicio { get; set; }
+        public virtual Sucursal? Sucursal { get; set; }
 
         // Métodos de dominio
         public TimeSpan Duracion => FechaHoraFin - FechaHoraInicio;
