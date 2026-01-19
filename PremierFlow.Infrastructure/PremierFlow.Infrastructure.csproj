@@ -25,8 +25,4 @@
     <ProjectReference Include="..\PremierFlow.Domain\PremierFlow.Domain.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Persistence\Repositories\Services\Catalogo\" />
-  </ItemGroup>
-
 </Project>

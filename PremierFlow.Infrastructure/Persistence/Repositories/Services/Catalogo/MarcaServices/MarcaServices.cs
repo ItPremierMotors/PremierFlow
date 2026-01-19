@@ -7,7 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.MarcaServices
+namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Catalogo.MarcaServices
 {
     public class MarcaService : IMarcaService
     {
@@ -49,7 +49,9 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.MarcaServ
         public async Task<ApiResponse<List<MarcaDTO>>> GetAllAsync()
         {
             // devolveremos todas las marcas activas
-            var marcas = await context.Marcas.Where(m => m.Activo)
+            var marcas = await context.Marcas
+                .AsNoTracking()
+                .Where(m => m.Activo)
                 .Select(m => new MarcaDTO
                 {
                     MarcaId = m.MarcaId,

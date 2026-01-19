@@ -8,7 +8,7 @@ using System.Collections.Generic;
 using System.Linq.Expressions;
 using System.Text;
 
-namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.ModeloServices
+namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Catalogo.ModeloServices
 {
    
     public class ModeloServices : IModeloService
@@ -22,7 +22,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.ModeloSer
             //validar si el codigo ya existe,
             if (await ModeloCodigoExists(dto.Codigo))
             {
-                return ApiResponse<ModeloDTO>.fail(400, null, "El código del modelo ya existe."));
+                return ApiResponse<ModeloDTO>.fail(400, null, "El código del modelo ya existe.");
             }
             var modelo = new Modelo
             {
@@ -118,7 +118,8 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.ModeloSer
         {
             var modelos = await context.Modelos
                 .Include(m => m.Marca)
-                .Where(m => m.MarcaId == marcaId && m.Activo)
+                .AsNoTracking()
+                .Where(m => m.MarcaId == marcaId && m.Activo )
                 .Select(m => new ModeloDTO
                 {
                     ModeloId = m.ModeloId,
