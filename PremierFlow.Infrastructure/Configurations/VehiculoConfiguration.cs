@@ -55,7 +55,7 @@ public class VehiculoConfiguration : IEntityTypeConfiguration<Vehiculo>
             builder.Property(e => e.GarantiaHasta).HasColumnName("garantia_hasta");
 
             // General
-            builder.Property(e => e.Observaciones).HasColumnName("observaciones").HasColumnType("text");
+            builder.Property(e => e.Observaciones).HasColumnName("observaciones").HasColumnType("nvarchar(1000)");
             builder.Property(e => e.FechaRegistro).HasColumnName("fecha_registro");
             builder.Property(e => e.Activo).HasColumnName("activo").HasDefaultValue(true);
             builder.Property(e => e.UsuarioCreaId).HasColumnName("usuario_crea_id").HasMaxLength(450);

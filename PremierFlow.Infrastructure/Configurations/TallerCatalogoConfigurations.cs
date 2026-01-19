@@ -18,7 +18,7 @@ namespace PremierFlow.Infrastructure.Configurations
             builder.Property(e => e.TipoServicioId).HasColumnName("tipo_servicio_id");
             builder.Property(e => e.Codigo).HasColumnName("codigo").HasMaxLength(20).IsRequired();
             builder.Property(e => e.Nombre).HasColumnName("nombre").HasMaxLength(100).IsRequired();
-            builder.Property(e => e.Descripcion).HasColumnName("descripcion").HasColumnType("text");
+            builder.Property(e => e.Descripcion).HasColumnName("descripcion").HasColumnType("nvarchar(2000)");
             builder.Property(e => e.DuracionEstimadaMin).HasColumnName("duracion_estimada_min").IsRequired();
             builder.Property(e => e.Clasificacion).HasColumnName("clasificacion").HasConversion<string>().HasMaxLength(20);
             builder.Property(e => e.PermiteWalkIn).HasColumnName("permite_walk_in").HasDefaultValue(false);
@@ -46,7 +46,7 @@ namespace PremierFlow.Infrastructure.Configurations
             builder.Property(e => e.EstadoId).HasColumnName("estado_id");
             builder.Property(e => e.Codigo).HasColumnName("codigo").HasMaxLength(30).IsRequired();
             builder.Property(e => e.Nombre).HasColumnName("nombre").HasMaxLength(50).IsRequired();
-            builder.Property(e => e.Descripcion).HasColumnName("descripcion").HasColumnType("text");
+            builder.Property(e => e.Descripcion).HasColumnName("descripcion").HasColumnType("nvarchar(2000)");
             builder.Property(e => e.OrdenSecuencial).HasColumnName("orden_secuencial").IsRequired();
             builder.Property(e => e.Activo).HasColumnName("activo").HasDefaultValue(true);
             builder.Property(e => e.UsuarioCreaId).HasColumnName("usuario_crea_id").HasMaxLength(450);
@@ -60,17 +60,17 @@ namespace PremierFlow.Infrastructure.Configurations
 
             // Seed data
             builder.HasData(
-                new EstadoOs { EstadoId = 1, Codigo = "ABIERTA", Nombre = "Abierta", Descripcion = "OS creada, pendiente de diagnóstico", OrdenSecuencial = 1 },
-                new EstadoOs { EstadoId = 2, Codigo = "DIAGNOSTICO", Nombre = "En Diagnóstico", Descripcion = "Técnico evaluando el vehículo", OrdenSecuencial = 2 },
-                new EstadoOs { EstadoId = 3, Codigo = "COTIZADA", Nombre = "Cotizada", Descripcion = "Presupuesto generado", OrdenSecuencial = 3 },
-                new EstadoOs { EstadoId = 4, Codigo = "APROBADA", Nombre = "Aprobada", Descripcion = "Cliente aprobó cotización", OrdenSecuencial = 4 },
-                new EstadoOs { EstadoId = 5, Codigo = "EN_TRABAJO", Nombre = "En Trabajo", Descripcion = "Técnico trabajando", OrdenSecuencial = 5 },
-                new EstadoOs { EstadoId = 6, Codigo = "PAUSADA", Nombre = "Pausada", Descripcion = "Trabajo detenido", OrdenSecuencial = 6 },
-                new EstadoOs { EstadoId = 7, Codigo = "COMPLETADA", Nombre = "Completada", Descripcion = "Trabajo terminado", OrdenSecuencial = 7 },
-                new EstadoOs { EstadoId = 8, Codigo = "FACTURADA", Nombre = "Facturada", Descripcion = "Factura generada", OrdenSecuencial = 8 },
-                new EstadoOs { EstadoId = 9, Codigo = "CERRADA", Nombre = "Cerrada", Descripcion = "OS cerrada y pagada", OrdenSecuencial = 9 },
-                new EstadoOs { EstadoId = 99, Codigo = "CANCELADA", Nombre = "Cancelada", Descripcion = "OS cancelada", OrdenSecuencial = 99 }
-            );
+             new { EstadoId = 1, Codigo = "ABIERTA", Nombre = "Abierta", Descripcion = "OS creada, pendiente de diagnóstico", OrdenSecuencial = 1, Activo = true, FechaCreacion = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+             new { EstadoId = 2, Codigo = "DIAGNOSTICO", Nombre = "En Diagnóstico", Descripcion = "Técnico evaluando el vehículo", OrdenSecuencial = 2, Activo = true, FechaCreacion = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+             new { EstadoId = 3, Codigo = "COTIZADA", Nombre = "Cotizada", Descripcion = "Presupuesto generado", OrdenSecuencial = 3, Activo = true, FechaCreacion = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+             new { EstadoId = 4, Codigo = "APROBADA", Nombre = "Aprobada", Descripcion = "Cliente aprobó cotización", OrdenSecuencial = 4, Activo = true, FechaCreacion = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+             new { EstadoId = 5, Codigo = "EN_TRABAJO", Nombre = "En Trabajo", Descripcion = "Técnico trabajando", OrdenSecuencial = 5, Activo = true, FechaCreacion = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+             new { EstadoId = 6, Codigo = "PAUSADA", Nombre = "Pausada", Descripcion = "Trabajo detenido", OrdenSecuencial = 6, Activo = true, FechaCreacion = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+             new { EstadoId = 7, Codigo = "COMPLETADA", Nombre = "Completada", Descripcion = "Trabajo terminado", OrdenSecuencial = 7, Activo = true, FechaCreacion = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+             new { EstadoId = 8, Codigo = "FACTURADA", Nombre = "Facturada", Descripcion = "Factura generada", OrdenSecuencial = 8, Activo = true, FechaCreacion = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+             new { EstadoId = 9, Codigo = "CERRADA", Nombre = "Cerrada", Descripcion = "OS cerrada y pagada", OrdenSecuencial = 9, Activo = true, FechaCreacion = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+             new { EstadoId = 99, Codigo = "CANCELADA", Nombre = "Cancelada", Descripcion = "OS cancelada", OrdenSecuencial = 99, Activo = true, FechaCreacion = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
+             );
         }
     }
 
@@ -119,7 +119,7 @@ namespace PremierFlow.Infrastructure.Configurations
             builder.Property(e => e.MinutosReservados).HasColumnName("minutos_reservados").HasDefaultValue(0);
             builder.Property(e => e.MinutosUtilizados).HasColumnName("minutos_utilizados").HasDefaultValue(0);
             builder.Property(e => e.PermiteAgendamiento).HasColumnName("permite_agendamiento").HasDefaultValue(true);
-            builder.Property(e => e.Observaciones).HasColumnName("observaciones").HasColumnType("text");
+            builder.Property(e => e.Observaciones).HasColumnName("observaciones").HasColumnType("nvarchar(2000)");
             builder.Property(e => e.SucursalId).HasColumnName("sucursal_id");
             builder.Property(e => e.UsuarioCreaId).HasColumnName("usuario_crea_id").HasMaxLength(450);
             builder.Property(e => e.FechaCreacion).HasColumnName("fecha_creacion");
@@ -174,9 +174,9 @@ namespace PremierFlow.Infrastructure.Configurations
             builder.Property(e => e.FechaHoraFin).HasColumnName("fecha_hora_fin").IsRequired();
             builder.Property(e => e.Estado).HasColumnName("estado").HasConversion<string>().HasMaxLength(20);
             builder.Property(e => e.TipoIngreso).HasColumnName("tipo_ingreso").HasConversion<string>().HasMaxLength(20);
-            builder.Property(e => e.MotivoVisita).HasColumnName("motivo_visita").HasColumnType("text").IsRequired();
-            builder.Property(e => e.Observaciones).HasColumnName("observaciones").HasColumnType("text");
-            builder.Property(e => e.MotivoCancelacion).HasColumnName("motivo_cancelacion").HasColumnType("text");
+            builder.Property(e => e.MotivoVisita).HasColumnName("motivo_visita").HasColumnType("nvarchar(2000)").IsRequired();
+            builder.Property(e => e.Observaciones).HasColumnName("observaciones").HasColumnType("nvarchar(2000)");
+            builder.Property(e => e.MotivoCancelacion).HasColumnName("motivo_cancelacion").HasColumnType("nvarchar(2000)");
             builder.Property(e => e.PreOrdenId).HasColumnName("pre_orden_id").HasMaxLength(50);
             builder.Property(e => e.SucursalId).HasColumnName("sucursal_id");
             builder.Property(e => e.UsuarioCreaId).HasColumnName("usuario_crea_id").HasMaxLength(450);

@@ -25,5 +25,6 @@ namespace PremierFlow.Domain.Common
         {
             get; set;
         }
+    }
 
 }

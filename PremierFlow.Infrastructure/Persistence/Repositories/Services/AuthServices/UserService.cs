@@ -7,7 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace PremierFlow.Infrastructure.Persistence.Repositories.Services
+namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.AuthServices
 {
     public class UserService : IUserService
     {

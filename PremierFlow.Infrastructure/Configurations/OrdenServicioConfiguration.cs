@@ -27,8 +27,8 @@ namespace PremierFlow.Infrastructure.Configurations
             builder.Property(e => e.NivelCombustible).HasColumnName("nivel_combustible").HasPrecision(3, 2);
             builder.Property(e => e.TipoIngreso).HasColumnName("tipo_ingreso").HasConversion<string>().HasMaxLength(20);
             builder.Property(e => e.EsGarantia).HasColumnName("es_garantia").HasDefaultValue(false);
-            builder.Property(e => e.ObservacionesApertura).HasColumnName("observaciones_apertura").HasColumnType("text");
-            builder.Property(e => e.ObservacionesCierre).HasColumnName("observaciones_cierre").HasColumnType("text");
+            builder.Property(e => e.ObservacionesApertura).HasColumnName("observaciones_apertura").HasColumnType("nvarchar(2000)");
+            builder.Property(e => e.ObservacionesCierre).HasColumnName("observaciones_cierre").HasColumnType("nvarchar(2000)");
             builder.Property(e => e.AsesorId).HasColumnName("asesor_id").HasMaxLength(450);
             builder.Property(e => e.CoordinadorId).HasColumnName("coordinador_id").HasMaxLength(450);
             builder.Property(e => e.TotalManoObra).HasColumnName("total_mano_obra").HasPrecision(10, 2).HasDefaultValue(0);
@@ -70,8 +70,8 @@ namespace PremierFlow.Infrastructure.Configurations
             builder.Property(e => e.FechaHoraRecepcion).HasColumnName("fecha_hora_recepcion");
             builder.Property(e => e.RecibidoPorId).HasColumnName("recibido_por_id").HasMaxLength(450).IsRequired();
             builder.Property(e => e.EntregadoPor).HasColumnName("entregado_por").HasMaxLength(100).IsRequired();
-            builder.Property(e => e.EstadoCarroceria).HasColumnName("estado_carroceria").HasColumnType("text");
-            builder.Property(e => e.AccesoriosRecibidos).HasColumnName("accesorios_recibidos").HasColumnType("text");
+            builder.Property(e => e.EstadoCarroceria).HasColumnName("estado_carroceria").HasColumnType("nvarchar(2000)");
+            builder.Property(e => e.AccesoriosRecibidos).HasColumnName("accesorios_recibidos").HasColumnType("nvarchar(2000)");
             builder.Property(e => e.LlantaRepuesto).HasColumnName("llanta_repuesto").HasDefaultValue(false);
             builder.Property(e => e.Gato).HasColumnName("gato").HasDefaultValue(false);
             builder.Property(e => e.Triangulos).HasColumnName("triangulos").HasDefaultValue(false);
@@ -79,8 +79,8 @@ namespace PremierFlow.Infrastructure.Configurations
             builder.Property(e => e.Herramientas).HasColumnName("herramientas").HasDefaultValue(false);
             builder.Property(e => e.Radio).HasColumnName("radio").HasDefaultValue(false);
             builder.Property(e => e.Tapetes).HasColumnName("tapetes").HasDefaultValue(false);
-            builder.Property(e => e.ObservacionesGenerales).HasColumnName("observaciones_generales").HasColumnType("text");
-            builder.Property(e => e.FirmaClienteBase64).HasColumnName("firma_cliente_base64").HasColumnType("longtext");
+            builder.Property(e => e.ObservacionesGenerales).HasColumnName("observaciones_generales").HasColumnType("nvarchar(2000)");
+            builder.Property(e => e.FirmaClienteBase64).HasColumnName("firma_cliente_base64").HasColumnType("nvarchar(max)");
             builder.Property(e => e.ChecklistCompletado).HasColumnName("checklist_completado").HasDefaultValue(false);
             builder.Property(e => e.UsuarioCreaId).HasColumnName("usuario_crea_id").HasMaxLength(450);
             builder.Property(e => e.FechaCreacion).HasColumnName("fecha_creacion");
@@ -105,7 +105,7 @@ namespace PremierFlow.Infrastructure.Configurations
             builder.Property(e => e.RecepcionId).HasColumnName("recepcion_id");
             builder.Property(e => e.TipoEvidencia).HasColumnName("tipo_evidencia").HasConversion<string>().HasMaxLength(30);
             builder.Property(e => e.UrlArchivo).HasColumnName("url_archivo").HasMaxLength(500).IsRequired();
-            builder.Property(e => e.Descripcion).HasColumnName("descripcion").HasColumnType("text");
+            builder.Property(e => e.Descripcion).HasColumnName("descripcion").HasColumnType("nvarchar(1000)");
             builder.Property(e => e.FechaCaptura).HasColumnName("fecha_captura");
             builder.Property(e => e.UsuarioRegistroId).HasColumnName("usuario_registro_id").HasMaxLength(450);
             builder.Property(e => e.UsuarioCreaId).HasColumnName("usuario_crea_id").HasMaxLength(450);
@@ -137,7 +137,7 @@ namespace PremierFlow.Infrastructure.Configurations
             builder.Property(e => e.OsServicioId).HasColumnName("os_servicio_id");
             builder.Property(e => e.OsId).HasColumnName("os_id").IsRequired();
             builder.Property(e => e.TipoServicioId).HasColumnName("tipo_servicio_id").IsRequired();
-            builder.Property(e => e.DescripcionTrabajo).HasColumnName("descripcion_trabajo").HasColumnType("text").IsRequired();
+            builder.Property(e => e.DescripcionTrabajo).HasColumnName("descripcion_trabajo").HasColumnType("nvarchar(3000)").IsRequired();
             builder.Property(e => e.Estado).HasColumnName("estado").HasConversion<string>().HasMaxLength(20);
             builder.Property(e => e.PrecioUnitario).HasColumnName("precio_unitario").HasPrecision(10, 2);
             builder.Property(e => e.Cantidad).HasColumnName("cantidad").HasDefaultValue(1);
@@ -145,7 +145,7 @@ namespace PremierFlow.Infrastructure.Configurations
             builder.Property(e => e.FechaInicio).HasColumnName("fecha_inicio");
             builder.Property(e => e.FechaFin).HasColumnName("fecha_fin");
             builder.Property(e => e.TecnicoAsignadoId).HasColumnName("tecnico_asignado_id");
-            builder.Property(e => e.Observaciones).HasColumnName("observaciones").HasColumnType("text");
+            builder.Property(e => e.Observaciones).HasColumnName("observaciones").HasColumnType("nvarchar(1000)");
             builder.Property(e => e.UsuarioCreaId).HasColumnName("usuario_crea_id").HasMaxLength(450);
             builder.Property(e => e.FechaCreacion).HasColumnName("fecha_creacion");
             builder.Property(e => e.UsuarioModificaId).HasColumnName("usuario_modifica_id").HasMaxLength(450);
@@ -176,7 +176,7 @@ namespace PremierFlow.Infrastructure.Configurations
             builder.Property(e => e.FechaInicio).HasColumnName("fecha_inicio");
             builder.Property(e => e.FechaFin).HasColumnName("fecha_fin");
             builder.Property(e => e.Estado).HasColumnName("estado").HasConversion<string>().HasMaxLength(20);
-            builder.Property(e => e.Observaciones).HasColumnName("observaciones").HasColumnType("text");
+            builder.Property(e => e.Observaciones).HasColumnName("observaciones").HasColumnType("nvarchar(1000)");
             builder.Property(e => e.UsuarioCreaId).HasColumnName("usuario_crea_id").HasMaxLength(450);
             builder.Property(e => e.FechaCreacion).HasColumnName("fecha_creacion");
             builder.Property(e => e.UsuarioModificaId).HasColumnName("usuario_modifica_id").HasMaxLength(450);
@@ -204,9 +204,9 @@ namespace PremierFlow.Infrastructure.Configurations
             builder.Property(e => e.FechaServicio).HasColumnName("fecha_servicio").IsRequired();
             builder.Property(e => e.TipoServicio).HasColumnName("tipo_servicio").HasMaxLength(200).IsRequired();
             builder.Property(e => e.Kilometraje).HasColumnName("kilometraje").IsRequired();
-            builder.Property(e => e.TrabajosRealizados).HasColumnName("trabajos_realizados").HasColumnType("text").IsRequired();
+            builder.Property(e => e.TrabajosRealizados).HasColumnName("trabajos_realizados").HasColumnType("nvarchar(2000)").IsRequired();
             builder.Property(e => e.MontoTotal).HasColumnName("monto_total").HasPrecision(10, 2);
-            builder.Property(e => e.ObservacionesTecnicas).HasColumnName("observaciones_tecnicas").HasColumnType("text");
+            builder.Property(e => e.ObservacionesTecnicas).HasColumnName("observaciones_tecnicas").HasColumnType("nvarchar(2000)");
             builder.Property(e => e.ProximaRevision).HasColumnName("proxima_revision").HasMaxLength(200);
             builder.Property(e => e.FechaRegistro).HasColumnName("fecha_registro");
             builder.Property(e => e.UsuarioCreaId).HasColumnName("usuario_crea_id").HasMaxLength(450);

@@ -8,7 +8,7 @@ using System.Collections.Generic;
 using System.Text;
 using static PremierFlow.Application.Dtos.Auth.LoginResponse;
 
-namespace PremierFlow.Infrastructure.Persistence.Repositories.Services
+namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.AuthServices
 {
     public class AuthService:IAuth
     {

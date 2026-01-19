@@ -5,7 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using PremierFlow.Application.Interfaces;
 using PremierFlow.Infrastructure.Identity;
 using PremierFlow.Infrastructure.Persistence;
-using PremierFlow.Infrastructure.Persistence.Repositories.Services;
+using PremierFlow.Infrastructure.Persistence.Repositories.Services.AuthServices;
 using PremierFlow.Infrastructure.Security;
 
 namespace PremierFlow.Infrastructure
