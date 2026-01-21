@@ -16,14 +16,14 @@ namespace PremierFlow.Domain.Entities
 
         public string? Apellidos { get; set; }
 
-        public string? DocumentoIdentidad { get; set; }
+        public string? DNI { get; set; }              // ← Nuevo: Identidad (13 dígitos)
+        public string? RTN { get; set; }              // ← Nuevo: Para facturación (14 dígitos)
 
         public string Telefono { get; set; } = null!;
-
+        public string? TelefonoSecundario { get; set; }
         public string? Email { get; set; }
-
         public string? Direccion { get; set; }
-
+        public string? Ciudad { get; set; }
         public DateTime FechaRegistro { get; set; } = DateTime.UtcNow;
 
         /// <summary>

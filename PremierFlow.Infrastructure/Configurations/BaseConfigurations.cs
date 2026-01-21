@@ -143,29 +143,98 @@ namespace PremierFlow.Infrastructure.Configurations
         public void Configure(EntityTypeBuilder<Cliente> builder)
         {
             builder.ToTable("clientes");
-            builder.HasKey(e => e.ClienteId);
-            builder.Property(e => e.ClienteId).HasColumnName("cliente_id");
-            builder.Property(e => e.TipoCliente).HasColumnName("tipo_cliente").HasConversion<string>().HasMaxLength(20);
-            builder.Property(e => e.Nombre).HasColumnName("nombre").HasMaxLength(100).IsRequired();
-            builder.Property(e => e.Apellidos).HasColumnName("apellidos").HasMaxLength(100);
-            builder.Property(e => e.DocumentoIdentidad).HasColumnName("documento_identidad").HasMaxLength(50);
-            builder.Property(e => e.Telefono).HasColumnName("telefono").HasMaxLength(20).IsRequired();
-            builder.Property(e => e.Email).HasColumnName("email").HasMaxLength(100);
-            builder.Property(e => e.Direccion).HasColumnName("direccion").HasColumnType("nvarchar(500)");
-            builder.Property(e => e.FechaRegistro).HasColumnName("fecha_registro");
-            builder.Property(e => e.NoShowCount).HasColumnName("no_show_count").HasDefaultValue(0);
-            builder.Property(e => e.UsuarioId).HasColumnName("usuario_id").HasMaxLength(450);
-            builder.Property(e => e.Activo).HasColumnName("activo").HasDefaultValue(true);
-            builder.Property(e => e.UsuarioCreaId).HasColumnName("usuario_crea_id").HasMaxLength(450);
-            builder.Property(e => e.FechaCreacion).HasColumnName("fecha_creacion");
-            builder.Property(e => e.UsuarioModificaId).HasColumnName("usuario_modifica_id").HasMaxLength(450);
-            builder.Property(e => e.FechaModificacion).HasColumnName("fecha_modificacion");
 
-            builder.HasIndex(e => e.DocumentoIdentidad).IsUnique();
-            builder.HasIndex(e => e.Telefono);
-            builder.HasIndex(e => e.Email);
-            builder.Ignore(e => e.NombreCompleto);
-            builder.Ignore(e => e.TieneAlertaNoShow);
+            builder.HasKey(c => c.ClienteId);
+
+            builder.Property(c => c.ClienteId)
+                .HasColumnName("cliente_id");
+
+            builder.Property(c => c.TipoCliente)
+                .HasColumnName("tipo_cliente")
+                .HasConversion<string>()
+                .HasMaxLength(20)
+                .IsRequired();
+
+            builder.Property(c => c.Nombre)
+                .HasColumnName("nombre")
+                .HasMaxLength(100)
+                .IsRequired();
+
+            builder.Property(c => c.Apellidos)
+                .HasColumnName("apellidos")
+                .HasMaxLength(100);
+
+            builder.Property(c => c.DNI)
+                .HasColumnName("dni")
+                .HasMaxLength(15);
+
+            builder.Property(c => c.RTN)
+                .HasColumnName("rtn")
+                .HasMaxLength(16);
+
+            builder.Property(c => c.Telefono)
+                .HasColumnName("telefono")
+                .HasMaxLength(20)
+                .IsRequired();
+
+            builder.Property(c => c.TelefonoSecundario)
+                .HasColumnName("telefono_secundario")
+                .HasMaxLength(20);
+
+            builder.Property(c => c.Email)
+                .HasColumnName("email")
+                .HasMaxLength(100);
+
+            builder.Property(c => c.Direccion)
+                .HasColumnName("direccion")
+                .HasMaxLength(250);
+
+            builder.Property(c => c.Ciudad)
+                .HasColumnName("ciudad")
+                .HasMaxLength(100);
+
+            builder.Property(c => c.FechaRegistro)
+                .HasColumnName("fecha_registro");
+
+            builder.Property(c => c.NoShowCount)
+                .HasColumnName("no_show_count")
+                .HasDefaultValue(0);
+
+            builder.Property(c => c.UsuarioId)
+                .HasColumnName("usuario_id")
+                .HasMaxLength(450);
+
+            // Campos de auditoría (de SoftDeletableEntity)
+            builder.Property(c => c.Activo)
+                .HasColumnName("activo")
+                .HasDefaultValue(true);
+
+            builder.Property(c => c.FechaCreacion)
+                .HasColumnName("fecha_creacion");
+
+            builder.Property(c => c.FechaModificacion)
+                .HasColumnName("fecha_modificacion");
+
+            builder.Property(c => c.UsuarioCreaId)
+                .HasColumnName("usuario_crea_id")
+                .HasMaxLength(450);
+
+            builder.Property(c => c.UsuarioModificaId)
+                .HasColumnName("usuario_modifica_id")
+                .HasMaxLength(450);
+
+            // Índices
+            builder.HasIndex(c => c.DNI)
+                .HasDatabaseName("ix_clientes_dni");
+
+            builder.HasIndex(c => c.RTN)
+                .HasDatabaseName("ix_clientes_rtn");
+
+            builder.HasIndex(c => c.Telefono)
+                .HasDatabaseName("ix_clientes_telefono");
+
+            builder.HasIndex(c => c.Email)
+                .HasDatabaseName("ix_clientes_email");
         }
     }
 
