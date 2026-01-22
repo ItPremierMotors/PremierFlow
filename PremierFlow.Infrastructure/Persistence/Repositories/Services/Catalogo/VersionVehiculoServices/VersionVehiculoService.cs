@@ -1,11 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using PremierFlow.Application.Common;
 using PremierFlow.Application.Dtos.Catalogo;
-using PremierFlow.Application.Interfaces;
+using PremierFlow.Application.Interfaces.Catalogo;
 using PremierFlow.Domain.Entities;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Catalogo.VersionVehiculoServices
 {

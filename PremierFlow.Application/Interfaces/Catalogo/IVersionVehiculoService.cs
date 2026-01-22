@@ -1,10 +1,11 @@
 ﻿using PremierFlow.Application.Common;
+
 using PremierFlow.Application.Dtos.Catalogo;
 using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace PremierFlow.Application.Interfaces
+namespace PremierFlow.Application.Interfaces.Catalogo
 {
     public interface IVersionVehiculoService
     {

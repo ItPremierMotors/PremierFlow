@@ -2,7 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using PremierFlow.Application.Interfaces;
+using PremierFlow.Application.Interfaces.Auth;
 using PremierFlow.Infrastructure.Identity;
 using PremierFlow.Infrastructure.Persistence;
 using PremierFlow.Infrastructure.Persistence.Repositories.Services.AuthServices;

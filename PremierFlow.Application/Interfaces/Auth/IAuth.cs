@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace PremierFlow.Application.Interfaces
+namespace PremierFlow.Application.Interfaces.Auth
 {
     public interface IAuth
     {

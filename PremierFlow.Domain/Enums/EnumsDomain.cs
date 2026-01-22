@@ -163,4 +163,12 @@ namespace PremierFlow.Domain.Enums
         Vendido = 6,           // Ya tiene dueño
         Entregado = 7          // Entregado al cliente
     }
+    public enum TipoTransmision
+    {
+        Manual=1,
+        Automatica = 2,
+        CVT = 3,
+        DualClutch = 4,
+        Semiautomatica = 5
+    }
 }

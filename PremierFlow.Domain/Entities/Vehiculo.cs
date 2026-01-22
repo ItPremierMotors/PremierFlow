@@ -35,6 +35,8 @@ namespace PremierFlow.Domain.Entities
         public int? VersionId { get; set; }
         public int Anio { get; set; }
         public string? Color { get; set; }
+        public TipoCombustible TipoCombustible { get; set; } = TipoCombustible.Gasolina;  // ← Agregado
+        public TipoTransmision? Transmision { get; set; }  // ← Agregado
 
         #endregion
 
@@ -164,6 +166,10 @@ namespace PremierFlow.Domain.Entities
 
         #region Métodos de Dominio
 
+        /// <summary>
+        /// Identificador principal (Placa o VIN).
+        /// </summary>
+        public string Identificador => !string.IsNullOrEmpty(Placa) ? Placa : Vin;  // ← Agregado
         /// <summary>
         /// Descripción completa del vehículo para mostrar en UI.
         /// </summary>

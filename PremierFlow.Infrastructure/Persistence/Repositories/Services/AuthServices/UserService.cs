@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using PremierFlow.Application.Dtos.User;
-using PremierFlow.Application.Interfaces;
+using PremierFlow.Application.Interfaces.Auth;
 using PremierFlow.Infrastructure.Identity;
 using System;
 using System.Collections.Generic;

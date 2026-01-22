@@ -10,4 +10,8 @@
     <ProjectReference Include="..\PremierFlow.Domain\PremierFlow.Domain.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Interfaces\Vehiculo\" />
+  </ItemGroup>
+
 </Project>
