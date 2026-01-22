@@ -12,72 +12,237 @@ public class VehiculoConfiguration : IEntityTypeConfiguration<Vehiculo>
         public void Configure(EntityTypeBuilder<Vehiculo> builder)
         {
             builder.ToTable("vehiculos");
-            builder.HasKey(e => e.VehiculoId);
 
-            // Identificación
-            builder.Property(e => e.VehiculoId).HasColumnName("vehiculo_id");
-            builder.Property(e => e.Vin).HasColumnName("vin").HasMaxLength(17).IsRequired();
-            builder.Property(e => e.Placa).HasColumnName("placa").HasMaxLength(20);
-            builder.Property(e => e.NumeroMotor).HasColumnName("numero_motor").HasMaxLength(50);
-            builder.Property(e => e.NumeroChasis).HasColumnName("numero_chasis").HasMaxLength(50);
+            builder.HasKey(v => v.VehiculoId);
 
-            // Catálogo
-            builder.Property(e => e.MarcaId).HasColumnName("marca_id").IsRequired();
-            builder.Property(e => e.ModeloId).HasColumnName("modelo_id").IsRequired();
-            builder.Property(e => e.VersionId).HasColumnName("version_id");
-            builder.Property(e => e.Anio).HasColumnName("anio").IsRequired();
-            builder.Property(e => e.Color).HasColumnName("color").HasMaxLength(50);
+            #region Identificación
 
-            // Estado y Ubicación
-            builder.Property(e => e.Estado).HasColumnName("estado").HasConversion<string>().HasMaxLength(20);
-            builder.Property(e => e.UbicacionId).HasColumnName("ubicacion_id");
-            builder.Property(e => e.SucursalId).HasColumnName("sucursal_id");
+            builder.Property(v => v.VehiculoId)
+                .HasColumnName("vehiculo_id");
 
-            // Operaciones (Importación)
-            builder.Property(e => e.Procedencia).HasColumnName("procedencia").HasConversion<string>().HasMaxLength(20);
-            builder.Property(e => e.NumeroImportacion).HasColumnName("numero_importacion").HasMaxLength(50);
-            builder.Property(e => e.NumeroPoliza).HasColumnName("numero_poliza").HasMaxLength(50);
-            builder.Property(e => e.FechaIngresoPais).HasColumnName("fecha_ingreso_pais");
-            builder.Property(e => e.FechaRecepcion).HasColumnName("fecha_recepcion");
-            builder.Property(e => e.CostoImportacion).HasColumnName("costo_importacion").HasPrecision(12, 2);
+            builder.Property(v => v.Vin)
+                .HasColumnName("vin")
+                .HasMaxLength(17)
+                .IsRequired();
 
-            // Ventas
-            builder.Property(e => e.ClienteId).HasColumnName("cliente_id");
-            builder.Property(e => e.PrecioLista).HasColumnName("precio_lista").HasPrecision(12, 2);
-            builder.Property(e => e.PrecioVenta).HasColumnName("precio_venta").HasPrecision(12, 2);
-            builder.Property(e => e.FechaVenta).HasColumnName("fecha_venta");
-            builder.Property(e => e.FechaEntrega).HasColumnName("fecha_entrega");
-            builder.Property(e => e.VendedorId).HasColumnName("vendedor_id").HasMaxLength(450);
+            builder.Property(v => v.Placa)
+                .HasColumnName("placa")
+                .HasMaxLength(15);
 
-            // Taller / Postventa
-            builder.Property(e => e.KilometrajeActual).HasColumnName("kilometraje_actual").HasDefaultValue(0);
-            builder.Property(e => e.FechaPrimeraMatricula).HasColumnName("fecha_primera_matricula");
-            builder.Property(e => e.GarantiaHasta).HasColumnName("garantia_hasta");
+            builder.Property(v => v.NumeroMotor)
+                .HasColumnName("numero_motor")
+                .HasMaxLength(50);
 
-            // General
-            builder.Property(e => e.Observaciones).HasColumnName("observaciones").HasColumnType("nvarchar(1000)");
-            builder.Property(e => e.FechaRegistro).HasColumnName("fecha_registro");
-            builder.Property(e => e.Activo).HasColumnName("activo").HasDefaultValue(true);
-            builder.Property(e => e.UsuarioCreaId).HasColumnName("usuario_crea_id").HasMaxLength(450);
-            builder.Property(e => e.FechaCreacion).HasColumnName("fecha_creacion");
-            builder.Property(e => e.UsuarioModificaId).HasColumnName("usuario_modifica_id").HasMaxLength(450);
-            builder.Property(e => e.FechaModificacion).HasColumnName("fecha_modificacion");
+            builder.Property(v => v.NumeroChasis)
+                .HasColumnName("numero_chasis")
+                .HasMaxLength(50);
 
-            // Relaciones
-            builder.HasOne(e => e.Marca).WithMany(m => m.Vehiculos).HasForeignKey(e => e.MarcaId).OnDelete(DeleteBehavior.Restrict);
-            builder.HasOne(e => e.Modelo).WithMany(m => m.Vehiculos).HasForeignKey(e => e.ModeloId).OnDelete(DeleteBehavior.Restrict);
-            builder.HasOne(e => e.Version).WithMany(v => v.Vehiculos).HasForeignKey(e => e.VersionId).OnDelete(DeleteBehavior.Restrict);
-            builder.HasOne(e => e.Cliente).WithMany(c => c.Vehiculos).HasForeignKey(e => e.ClienteId).OnDelete(DeleteBehavior.Restrict);
-            builder.HasOne(e => e.Ubicacion).WithMany(u => u.Vehiculos).HasForeignKey(e => e.UbicacionId).OnDelete(DeleteBehavior.Restrict);
-            builder.HasOne(e => e.Sucursal).WithMany().HasForeignKey(e => e.SucursalId).OnDelete(DeleteBehavior.Restrict);
+            #endregion
 
-            // Índices
-            builder.HasIndex(e => e.Vin).IsUnique();
-            builder.HasIndex(e => e.Placa);
-            builder.HasIndex(e => e.ClienteId);
-            builder.HasIndex(e => e.Estado);
-            builder.HasIndex(e => e.SucursalId);
-            builder.HasIndex(e => e.UbicacionId);
+            #region Catálogo
+
+            builder.Property(v => v.MarcaId)
+                .HasColumnName("marca_id")
+                .IsRequired();
+
+            builder.Property(v => v.ModeloId)
+                .HasColumnName("modelo_id")
+                .IsRequired();
+
+            builder.Property(v => v.VersionId)
+                .HasColumnName("version_id");
+
+            builder.Property(v => v.Anio)
+                .HasColumnName("anio")
+                .IsRequired();
+
+            builder.Property(v => v.Color)
+                .HasColumnName("color")
+                .HasMaxLength(50);
+
+            builder.Property(v => v.TipoCombustible)
+                .HasColumnName("tipo_combustible")
+                .HasConversion<string>()
+                .HasMaxLength(20);
+
+            builder.Property(v => v.Transmision)
+                .HasColumnName("transmision")
+                .HasConversion<string>()
+                .HasMaxLength(20);
+
+            #endregion
+
+            #region Estado y Ubicación
+
+            builder.Property(v => v.Estado)
+                .HasColumnName("estado")
+                .HasConversion<string>()
+                .HasMaxLength(20)
+                .IsRequired();
+
+            builder.Property(v => v.UbicacionId)
+                .HasColumnName("ubicacion_id");
+
+            builder.Property(v => v.SucursalId)
+                .HasColumnName("sucursal_id");
+
+            #endregion
+
+            #region Operaciones (Importación)
+
+            builder.Property(v => v.Procedencia)
+                .HasColumnName("procedencia")
+                .HasConversion<string>()
+                .HasMaxLength(20);
+
+            builder.Property(v => v.NumeroImportacion)
+                .HasColumnName("numero_importacion")
+                .HasMaxLength(50);
+
+            builder.Property(v => v.NumeroPoliza)
+                .HasColumnName("numero_poliza")
+                .HasMaxLength(50);
+
+            builder.Property(v => v.FechaIngresoPais)
+                .HasColumnName("fecha_ingreso_pais");
+
+            builder.Property(v => v.FechaRecepcion)
+                .HasColumnName("fecha_recepcion");
+
+            builder.Property(v => v.CostoImportacion)
+                .HasColumnName("costo_importacion")
+                .HasPrecision(18, 2);
+
+            #endregion
+
+            #region Ventas
+
+            builder.Property(v => v.ClienteId)
+                .HasColumnName("cliente_id");
+
+            builder.Property(v => v.PrecioLista)
+                .HasColumnName("precio_lista")
+                .HasPrecision(18, 2);
+
+            builder.Property(v => v.PrecioVenta)
+                .HasColumnName("precio_venta")
+                .HasPrecision(18, 2);
+
+            builder.Property(v => v.FechaVenta)
+                .HasColumnName("fecha_venta");
+
+            builder.Property(v => v.FechaEntrega)
+                .HasColumnName("fecha_entrega");
+
+            builder.Property(v => v.VendedorId)
+                .HasColumnName("vendedor_id")
+                .HasMaxLength(450);
+
+            #endregion
+
+            #region Taller / Postventa
+
+            builder.Property(v => v.KilometrajeActual)
+                .HasColumnName("kilometraje_actual")
+                .HasDefaultValue(0);
+
+            builder.Property(v => v.FechaPrimeraMatricula)
+                .HasColumnName("fecha_primera_matricula");
+
+            builder.Property(v => v.GarantiaHasta)
+                .HasColumnName("garantia_hasta");
+
+            #endregion
+
+            #region General
+
+            builder.Property(v => v.Observaciones)
+                .HasColumnName("observaciones")
+                .HasMaxLength(500);
+
+            builder.Property(v => v.FechaRegistro)
+                .HasColumnName("fecha_registro");
+
+            #endregion
+
+            #region Auditoría
+
+            builder.Property(v => v.Activo)
+                .HasColumnName("activo")
+                .HasDefaultValue(true);
+
+            builder.Property(v => v.FechaCreacion)
+                .HasColumnName("fecha_creacion");
+
+            builder.Property(v => v.FechaModificacion)
+                .HasColumnName("fecha_modificacion");
+
+            builder.Property(v => v.UsuarioCreaId)
+                .HasColumnName("usuario_crea_id")
+                .HasMaxLength(450);
+
+            builder.Property(v => v.UsuarioModificaId)
+                .HasColumnName("usuario_modifica_id")
+                .HasMaxLength(450);
+
+            #endregion
+
+            #region Relaciones
+
+            builder.HasOne(v => v.Cliente)
+                .WithMany(c => c.Vehiculos)
+                .HasForeignKey(v => v.ClienteId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasOne(v => v.Marca)
+                .WithMany(m => m.Vehiculos)
+                .HasForeignKey(v => v.MarcaId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasOne(v => v.Modelo)
+                .WithMany(m => m.Vehiculos)
+                .HasForeignKey(v => v.ModeloId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasOne(v => v.Version)
+                .WithMany(ver => ver.Vehiculos)
+                .HasForeignKey(v => v.VersionId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasOne(v => v.Ubicacion)
+                .WithMany(u => u.Vehiculos)
+                .HasForeignKey(v => v.UbicacionId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasOne(v => v.Sucursal)
+                .WithMany()
+                .HasForeignKey(v => v.SucursalId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            #endregion
+
+            #region Índices
+
+            builder.HasIndex(v => v.Vin)
+                .IsUnique()
+                .HasDatabaseName("ix_vehiculos_vin");
+
+            builder.HasIndex(v => v.Placa)
+                .HasDatabaseName("ix_vehiculos_placa");
+
+            builder.HasIndex(v => v.ClienteId)
+                .HasDatabaseName("ix_vehiculos_cliente_id");
+
+            builder.HasIndex(v => v.Estado)
+                .HasDatabaseName("ix_vehiculos_estado");
+
+            builder.HasIndex(v => v.MarcaId)
+                .HasDatabaseName("ix_vehiculos_marca_id");
+
+            builder.HasIndex(v => v.SucursalId)
+                .HasDatabaseName("ix_vehiculos_sucursal_id");
+
+            #endregion
 
             // Ignorar propiedades calculadas
             builder.Ignore(e => e.DescripcionCompleta);

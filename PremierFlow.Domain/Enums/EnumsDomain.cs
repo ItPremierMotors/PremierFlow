@@ -165,10 +165,10 @@ namespace PremierFlow.Domain.Enums
     }
     public enum TipoTransmision
     {
-        Manual=1,
-        Automatica = 2,
-        CVT = 3,
-        DualClutch = 4,
-        Semiautomatica = 5
+        Manual,
+        Automatica,
+        CVT ,
+        DualClutch,
+        Semiautomatica 
     }
 }
