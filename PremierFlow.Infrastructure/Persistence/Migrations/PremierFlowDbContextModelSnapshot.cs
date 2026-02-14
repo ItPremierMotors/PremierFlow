@@ -17,7 +17,7 @@ namespace PremierFlow.Infrastructure.Persistence.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.0")
+                .HasAnnotation("ProductVersion", "10.0.1")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -164,6 +164,12 @@ namespace PremierFlow.Infrastructure.Persistence.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("AsignacionId"));
 
+                    b.Property<bool>("Activo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true)
+                        .HasColumnName("activo");
+
                     b.Property<string>("Estado")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -306,6 +312,12 @@ namespace PremierFlow.Infrastructure.Persistence.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("CapacidadId"));
 
+                    b.Property<bool>("Activo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true)
+                        .HasColumnName("activo");
+
                     b.Property<int>("BahiasDisponibles")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int")
@@ -336,6 +348,12 @@ namespace PremierFlow.Infrastructure.Persistence.Migrations
                         .HasDefaultValue(0)
                         .HasColumnName("minutos_reservados");
 
+                    b.Property<int>("MinutosSobretiempo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("minutos_sobretiempo");
+
                     b.Property<int>("MinutosUtilizados")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int")
@@ -351,6 +369,12 @@ namespace PremierFlow.Infrastructure.Persistence.Migrations
                         .HasColumnType("bit")
                         .HasDefaultValue(true)
                         .HasColumnName("permite_agendamiento");
+
+                    b.Property<bool>("PermiteSobretiempo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true)
+                        .HasColumnName("permite_sobretiempo");
 
                     b.Property<int?>("SucursalId")
                         .HasColumnType("int")
@@ -397,6 +421,12 @@ namespace PremierFlow.Infrastructure.Persistence.Migrations
                         .HasColumnName("cita_id");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("CitaId"));
+
+                    b.Property<bool>("Activo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true)
+                        .HasColumnName("activo");
 
                     b.Property<int>("ClienteId")
                         .HasColumnType("int")
@@ -786,6 +816,12 @@ namespace PremierFlow.Infrastructure.Persistence.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("EvidenciaId"));
 
+                    b.Property<bool>("Activo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true)
+                        .HasColumnName("activo");
+
                     b.Property<string>("Descripcion")
                         .HasColumnType("nvarchar(1000)")
                         .HasColumnName("descripcion");
@@ -854,6 +890,12 @@ namespace PremierFlow.Infrastructure.Persistence.Migrations
                         .HasColumnName("ats_id");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("AtsId"));
+
+                    b.Property<bool>("Activo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true)
+                        .HasColumnName("activo");
 
                     b.Property<DateTime>("FechaCreacion")
                         .HasColumnType("datetime2")
@@ -1093,6 +1135,12 @@ namespace PremierFlow.Infrastructure.Persistence.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("OsId"));
 
+                    b.Property<bool>("Activo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true)
+                        .HasColumnName("activo");
+
                     b.Property<string>("AsesorId")
                         .HasMaxLength(450)
                         .HasColumnType("nvarchar(450)")
@@ -1236,6 +1284,12 @@ namespace PremierFlow.Infrastructure.Persistence.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("OsServicioId"));
 
+                    b.Property<bool>("Activo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true)
+                        .HasColumnName("activo");
+
                     b.Property<int>("Cantidad")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int")
@@ -1328,6 +1382,12 @@ namespace PremierFlow.Infrastructure.Persistence.Migrations
                     b.Property<string>("AccesoriosRecibidos")
                         .HasColumnType("nvarchar(2000)")
                         .HasColumnName("accesorios_recibidos");
+
+                    b.Property<bool>("Activo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true)
+                        .HasColumnName("activo");
 
                     b.Property<bool>("ChecklistCompletado")
                         .ValueGeneratedOnAdd()
@@ -1553,7 +1613,8 @@ namespace PremierFlow.Infrastructure.Persistence.Migrations
                     b.HasKey("TecnicoId");
 
                     b.HasIndex("Codigo")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("[activo] = 1");
 
                     b.HasIndex("SucursalId");
 
@@ -1645,7 +1706,8 @@ namespace PremierFlow.Infrastructure.Persistence.Migrations
                     b.HasKey("TipoServicioId");
 
                     b.HasIndex("Codigo")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("[activo] = 1");
 
                     b.ToTable("tipos_servicio", (string)null);
                 });

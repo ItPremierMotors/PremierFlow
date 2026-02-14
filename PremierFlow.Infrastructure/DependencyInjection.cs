@@ -3,9 +3,23 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using PremierFlow.Application.Interfaces.Auth;
+using PremierFlow.Application.Interfaces.Catalogo;
+using PremierFlow.Application.Interfaces.Cliente;
+using PremierFlow.Application.Interfaces.Taller;
+using PremierFlow.Application.Interfaces.Vehiculo;
 using PremierFlow.Infrastructure.Identity;
 using PremierFlow.Infrastructure.Persistence;
 using PremierFlow.Infrastructure.Persistence.Repositories.Services.AuthServices;
+using PremierFlow.Infrastructure.Persistence.Repositories.Services.Catalogo.IEstadoOsServices;
+using PremierFlow.Infrastructure.Persistence.Repositories.Services.Catalogo.MarcaServices;
+using PremierFlow.Infrastructure.Persistence.Repositories.Services.Catalogo.ModeloServices;
+using PremierFlow.Infrastructure.Persistence.Repositories.Services.Catalogo.TecnicoServices;
+using PremierFlow.Infrastructure.Persistence.Repositories.Services.Catalogo.TipoServicioServices;
+using PremierFlow.Infrastructure.Persistence.Repositories.Services.Catalogo.SucursalServices;
+using PremierFlow.Infrastructure.Persistence.Repositories.Services.Catalogo.VersionVehiculoServices;
+using PremierFlow.Infrastructure.Persistence.Repositories.Services.Cliente;
+using PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller;
+using PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoService;
 using PremierFlow.Infrastructure.Security;
 
 namespace PremierFlow.Infrastructure
@@ -49,10 +63,37 @@ namespace PremierFlow.Infrastructure
 
             //4. otros servicios de infraestructura (ejemplo: servicios de seguridad, email, etc.)
 
+            // ============================================
+            // 5. SERVICIOS DE NEGOCIO - PremierFlow DMS
+            // ============================================
+            // Fase 1: Catálogos
+            services.AddScoped<IMarcaService, MarcaService>();
+            services.AddScoped<IModeloService,ModeloService>();
+            services.AddScoped<IVersionVehiculoService, VersionVehiculoService>();
+            services.AddScoped<ITipoServicioService, TipoServicioService>();
+            services.AddScoped<ITecnicoService, TecnicoService>();
+            services.AddScoped<IEstadoOsService, EstadoOsService>();
+            services.AddScoped<ISucursalService, SucursalService>();
+
+            // Fase 2: Cliente y Vehículo
+            services.AddScoped<IClienteService, ClienteService>();
+            services.AddScoped<IVehiculoService, VehiculoService>();
+            // Fase 3: Flujo de Taller
+            services.AddScoped<ICapacidadTallerService, CapacidadTallerService>();
+            services.AddScoped<IBloqueHorarioService, BloqueHorarioService>();
+            services.AddScoped<ICitaService, CitaService>();
+            services.AddScoped<IOrdenServicioService, OrdenServicioService>(); //OrdenServicioService OrdenServicioService
+            services.AddScoped<IRecepcionService, RecepcionService>();
+            services.AddScoped<IOsServicioService, OsServicioService>();
+            services.AddScoped<IAsignacionTecnicoService, AsignacionTecnicoService>();
+            services.AddScoped<IEvidenciaService, EvidenciaService>();
+            services.AddScoped<IHistorialAtsService, HistorialAtsService>();
+
             //servicio de seguridad
             services.AddScoped<IJwtTokenService, JwtTokenService>();
             services.AddScoped<IAuth, AuthService>();
             services.AddScoped<IUserService, UserService>();
+            services.AddScoped<IRoleService, RoleService>();
             return services;
         }
        

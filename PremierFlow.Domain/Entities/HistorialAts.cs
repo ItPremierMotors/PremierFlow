@@ -8,7 +8,7 @@ namespace PremierFlow.Domain.Entities
     /// <summary>
     /// Historial permanente de servicio por VIN (ATS - After-Sales Tracking System).
     /// </summary>
-    public class HistorialAts : AuditableEntity
+    public class HistorialAts : SoftDeletableEntity
     {
         public int AtsId { get; set; }
 

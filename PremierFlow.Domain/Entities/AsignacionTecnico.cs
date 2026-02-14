@@ -9,7 +9,7 @@ namespace PremierFlow.Domain.Entities
     /// <summary>
     /// Registra las asignaciones de técnicos a Órdenes de Servicio.
     /// </summary>
-    public class AsignacionTecnico : AuditableEntity
+    public class AsignacionTecnico : SoftDeletableEntity
     {
         public int AsignacionId { get; set; }
 

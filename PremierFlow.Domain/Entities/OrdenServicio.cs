@@ -9,7 +9,7 @@ namespace PremierFlow.Domain.Entities
 {// <summary>
     /// Documento operativo principal del taller (Orden de Servicio).
     /// </summary>
-    public class OrdenServicio : AuditableEntity
+    public class OrdenServicio : SoftDeletableEntity
     {
         public int OsId { get; set; }
 

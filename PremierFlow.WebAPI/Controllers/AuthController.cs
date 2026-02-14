@@ -1,14 +1,19 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using Azure.Core;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using PremierFlow.Application.Common;
 using PremierFlow.Application.Dtos.Auth;
 using PremierFlow.Application.Dtos.User;
 using PremierFlow.Application.Interfaces.Auth;
 using PremierFlow.Infrastructure.Identity;
+using PremierFlow.Infrastructure.Persistence.Repositories.Services.AuthServices;
 using PremierFlow.Infrastructure.Security;
+using System.Globalization;
 using System.Security.Claims;
+using System.Text;
 
 
 namespace PremierFlow.WebAPI.Controllers
@@ -28,172 +33,144 @@ namespace PremierFlow.WebAPI.Controllers
         }
 
         [HttpPost("login")]
+        [AllowAnonymous]
         public async Task<IActionResult> Login([FromBody] LoginRequest loginRequest)
         {
-            try
-            {
+            //try
+            //{
 
-                var response = await auth.LoginAsync(loginRequest);
-                return Ok(response);
-            }
-            catch (UnauthorizedAccessException ex)
-            {
+            //    var response = await auth.LoginAsync(loginRequest);
+            //    return Ok(response);
+            //}
+            //catch (UnauthorizedAccessException ex)
+            //{
 
-                return Unauthorized(new { Message = ex.Message });
-            }
+            //    return Unauthorized(new { Message = ex.Message });
+            //}
+
+            var result = await auth.LoginAsync(loginRequest);
+
+            return StatusCode(result.StatusCode, result);
         }
 
         //crear usuario
         [HttpPost("create-user")]
-        public async Task<IActionResult> CreateUser(CreateUserRequest reques)
+        [AllowAnonymous]
+       
+        public async Task<ActionResult<ApiResponse<string>>> Create([FromBody] CreateUserRequest request)
         {
-            try
+           if (string.IsNullOrWhiteSpace(request.NombreCompleto))
             {
-                var response = await userService.CreateAsync(reques);
-                return Ok(response);
-
+                return BadRequest(new 
+                {
+                    Success = false,
+                    Message = "El nombre completo es obligatorio"
+                });
             }
-            catch (Exception ex)
-            {
 
-                return Problem(
-                    detail: ex.Message,
-                    statusCode: StatusCodes.Status400BadRequest
-                );
-            }
+              request.UserName = GenerarUserName(request.NombreCompleto);
+
+              var result = await userService.CreateAsync(request);
+              return StatusCode(result.StatusCode, result);
         }
 
         //cambio de contraseña
         [Authorize]
-        [HttpPut("{userId}/change-password")]
-        public async Task<IActionResult> ChangePassword([FromRoute] string userId, [FromBody] ChangePasswordRequest request)
+        [HttpPut("change-password/{userId}")]
+        public async Task<ActionResult<ApiResponse<bool>>> ChangePassword(string userId, [FromBody] ChangePasswordRequest request)
         {
-            try
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (currentUserId != userId)
             {
-                var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                if (currentUserId != userId)
-                {
-                    return Unauthorized(new { Message = "No autorizado para cambiar la contraseña de este usuario." });
-                }
-                var response = await userService.ChangePasswordAsync(userId, request);
-                return Ok(response);
+                return Unauthorized(new { Message = "No autorizado para cambiar la contraseña de este usuario." });
             }
-            catch (Exception ex)
-            {
-                return Unauthorized(new { Message = ex.Message });
-            }
+            var result = await userService.ChangePasswordAsync(userId, request);
+            return StatusCode(result.StatusCode, result);
         }
+
 
         [Authorize(Roles = "AdminTI")]
         [HttpGet("GetAllUsers")]
-        public async Task<IActionResult> GetAllUser()
+        public async Task<ActionResult<ApiResponse<List<UsersDTO>>>> GetAll()
         {
-            try
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (currentUserId == null)
             {
-                //verificar que sea el rol adecuado
-                var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                if (currentUserId == null)
-                {
-                    return Unauthorized(new { Message = "No autorizado para ver los usuarios." });
-                }
-                var Usuarios = await userService.GetAllAsync();
-                return Ok(Usuarios);
-
+                return Unauthorized(new { Message = "No autorizado para ver los usuarios." });
             }
-            catch (Exception)
-            {
-
-                //retornar error generico 
-                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "Error al obtener los usuarios." });
-            }
+            var result = await userService.GetAllAsync();
+            return StatusCode(result.StatusCode, result);
         }
-        [Authorize(Roles = "AdminTI")]
+
+        [Authorize]
         [HttpGet("GetUserById/{id}")]
-        public async Task<IActionResult> GetUser([FromRoute] string id)
+        public async Task<ActionResult<ApiResponse<UsersDTO?>>> GetById(string id)
         {
-            try
+            var result = await userService.GetByIdAsync(id);
+
+            if (result == null)
             {
-                //verificar que sea el rol adecuado
-                var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                if (currentUserId == null)
+                return StatusCode(500, new ApiResponse<UsersDTO?>
                 {
-                    return Unauthorized(new { Message = "No autorizado para ver los usuarios." });
-                }
-                var Usuarios = await userService.GetByIdAsync(id);
-                return Ok(Usuarios);
-
+                    Success = false,
+                    message = "Error al obtener el usuario",
+                    StatusCode = 500
+                });
             }
-            catch (Exception)
-            {
 
-                //retornar error generico 
-                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "Error al obtener los usuarios." });
-            }
+            return StatusCode(result.StatusCode, result);
         }
 
         //update
         [Authorize]
         [HttpPut("Update-User/{id}")]
-        public async Task<IActionResult> UpdateUser([FromBody] UpdateUserRequest request, [FromRoute] string id)
+        public async Task<ActionResult<ApiResponse<bool>>> Update(string id, [FromBody] UpdateUserRequest request)
         {
-            try
-            {
-                var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                if (currentUserId == null)
-                {
-                    return Unauthorized(new { Message = "No autorizado para ver los usuarios." });
-                }
-                var resultado = await userService.UpdateAsync(id, request);
-                return StatusCode(StatusCodes.Status200OK, new { message = "Usuario Modificado" });
-
-            }
-            catch (Exception ex)
-            {
-
-
-                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = $"Error al obtener los usuarios. {ex.Message}" });
-
-
-            }
-
+            var result = await userService.UpdateAsync(id, request);
+            return StatusCode(result.StatusCode, result);
         }
 
         [Authorize(Roles = "AdminTI")]
         [HttpPost("Reset-Password/{id}")]
-        public async Task<IActionResult> ResetPassword(
-        [FromRoute] string id,
-        [FromBody] ResetPasswordRequest request)
+        public async Task<ActionResult<ApiResponse<bool>>> ResetPassword(string id, [FromBody] ResetPasswordRequest request)
         {
-            try
-            {
-                // Aquí ya no necesitas validar el rol manualmente porque
-                // [Authorize(Roles = "AdminTI")] ya bloquea a quien no lo tenga.
-
-                var result = await userService.ResetPasswordAsync(id, request);
-
-                if (!result) // si falla es false
-                {
-                    return StatusCode(
-                        StatusCodes.Status400BadRequest,
-                        new { Message = "Error al cambiar la contraseña." }
-                    );
-                }
-
-                return StatusCode(
-                    StatusCodes.Status200OK,
-                    new { Message = "Contraseña cambiada correctamente." }
-                );
-            }
-            catch (Exception ex)
-            {
-                // Idealmente aquí loggearías el error con ILogger
-                return StatusCode(
-                    StatusCodes.Status500InternalServerError,
-                    new { Message = $"Error interno al cambiar la contraseña.{ex.Message}" }
-                );
-            }
+            var result = await userService.ResetPasswordAsync(id, request);
+            return StatusCode(result.StatusCode, result);
         }
 
+        public static string GenerarUserName(string nombreCompleto)
+        {
+            if (string.IsNullOrWhiteSpace(nombreCompleto))
+                return string.Empty;
+
+            // Separar por espacios y limpiar
+            var partes = nombreCompleto
+                .Trim()
+                .Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+            if (partes.Length < 2)
+                return partes[0].Substring(0, 1).ToUpper();
+
+            var inicialNombre = partes[0].Substring(0, 1);
+            var apellido = partes.Length >= 3 ? partes[2] : partes[1];
+
+            var username = inicialNombre + apellido;
+
+            return QuitarAcentos(username).ToUpper();
+        }
+        private static string QuitarAcentos(string texto)
+        {
+            var normalized = texto.Normalize(NormalizationForm.FormD);
+            var sb = new StringBuilder();
+
+            foreach (var c in normalized)
+            {
+                if (CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark)
+                    sb.Append(c);
+            }
+
+            return sb.ToString().Normalize(NormalizationForm.FormC);
+        }
 
     }
 }

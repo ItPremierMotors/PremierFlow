@@ -24,6 +24,10 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Cliente
                 if (await DNIExiste(dto.DNI))
                     return ApiResponse<ClienteDTO>.fail(400, null, "Ya existe un cliente con ese DNI.");
             }
+            //1.2 validar nombre y apelllido que no venga vacio
+            if (string.IsNullOrWhiteSpace(dto.Nombre))
+                return ApiResponse<ClienteDTO>.fail(400, null, "El nombre es obligatorio.");
+
 
             // 2. Validar RTN duplicado
             if (!string.IsNullOrEmpty(dto.RTN))

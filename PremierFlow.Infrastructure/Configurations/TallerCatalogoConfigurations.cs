@@ -31,7 +31,7 @@ namespace PremierFlow.Infrastructure.Configurations
             builder.Property(e => e.UsuarioModificaId).HasColumnName("usuario_modifica_id").HasMaxLength(450);
             builder.Property(e => e.FechaModificacion).HasColumnName("fecha_modificacion");
 
-            builder.HasIndex(e => e.Codigo).IsUnique();
+            builder.HasIndex(e => e.Codigo).IsUnique().HasFilter("[activo] = 1");
             builder.Ignore(e => e.EsServicioRapido);
             builder.Ignore(e => e.DuracionEstimada);
         }
@@ -93,9 +93,9 @@ namespace PremierFlow.Infrastructure.Configurations
             builder.Property(e => e.FechaCreacion).HasColumnName("fecha_creacion");
             builder.Property(e => e.UsuarioModificaId).HasColumnName("usuario_modifica_id").HasMaxLength(450);
             builder.Property(e => e.FechaModificacion).HasColumnName("fecha_modificacion");
-
+            builder.Property(e => e.Activo).HasColumnName("activo").HasDefaultValue(true);
             builder.HasOne(e => e.Sucursal).WithMany().HasForeignKey(e => e.SucursalId).OnDelete(DeleteBehavior.Restrict);
-            builder.HasIndex(e => e.Codigo).IsUnique();
+            builder.HasIndex(e => e.Codigo).IsUnique().HasFilter("[activo] = 1");
             builder.Ignore(e => e.NombreCompleto);
         }
     }
@@ -125,11 +125,16 @@ namespace PremierFlow.Infrastructure.Configurations
             builder.Property(e => e.FechaCreacion).HasColumnName("fecha_creacion");
             builder.Property(e => e.UsuarioModificaId).HasColumnName("usuario_modifica_id").HasMaxLength(450);
             builder.Property(e => e.FechaModificacion).HasColumnName("fecha_modificacion");
-
+            builder.Property(e => e.MinutosSobretiempo).HasColumnName("minutos_sobretiempo").HasDefaultValue(0);
+            builder.Property(e => e.PermiteSobretiempo).HasColumnName("permite_sobretiempo").HasDefaultValue(true);
+            builder.Property(e => e.Activo).HasColumnName("activo").HasDefaultValue(true);
             builder.HasOne(e => e.Sucursal).WithMany().HasForeignKey(e => e.SucursalId).OnDelete(DeleteBehavior.Restrict);
             builder.HasIndex(e => new { e.Fecha, e.Turno, e.SucursalId }).IsUnique();
             builder.Ignore(e => e.MinutosLibres);
             builder.Ignore(e => e.PorcentajeOcupacion);
+            builder.Ignore(e => e.PorcentajeEficiencia);
+            builder.Ignore(e => e.TuvoSobretiempo);
+
         }
     }
 
@@ -151,7 +156,7 @@ namespace PremierFlow.Infrastructure.Configurations
             builder.Property(e => e.FechaCreacion).HasColumnName("fecha_creacion");
             builder.Property(e => e.UsuarioModificaId).HasColumnName("usuario_modifica_id").HasMaxLength(450);
             builder.Property(e => e.FechaModificacion).HasColumnName("fecha_modificacion");
-
+            builder.Property(e => e.Activo).HasColumnName("activo").HasDefaultValue(true);
             builder.HasOne(e => e.Capacidad).WithMany(c => c.BloquesHorario).HasForeignKey(e => e.CapacidadId).OnDelete(DeleteBehavior.Cascade);
             builder.Ignore(e => e.EspaciosDisponibles);
             builder.Ignore(e => e.TieneEspacioDisponible);
@@ -183,7 +188,7 @@ namespace PremierFlow.Infrastructure.Configurations
             builder.Property(e => e.FechaCreacion).HasColumnName("fecha_creacion");
             builder.Property(e => e.UsuarioModificaId).HasColumnName("usuario_modifica_id").HasMaxLength(450);
             builder.Property(e => e.FechaModificacion).HasColumnName("fecha_modificacion");
-
+            builder.Property(e => e.Activo).HasColumnName("activo").HasDefaultValue(true);
             builder.HasOne(e => e.Cliente).WithMany(c => c.Citas).HasForeignKey(e => e.ClienteId).OnDelete(DeleteBehavior.Restrict);
             builder.HasOne(e => e.Vehiculo).WithMany(v => v.Citas).HasForeignKey(e => e.VehiculoId).OnDelete(DeleteBehavior.Restrict);
             builder.HasOne(e => e.TipoServicio).WithMany(t => t.Citas).HasForeignKey(e => e.TipoServicioId).OnDelete(DeleteBehavior.Restrict);

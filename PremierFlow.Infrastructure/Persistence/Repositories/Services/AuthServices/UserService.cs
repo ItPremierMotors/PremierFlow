@@ -1,246 +1,426 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿// PremierFlow.Infrastructure/Persistence/Repositories/Services/AuthServices/UserService.cs
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using PremierFlow.Application.Common;
 using PremierFlow.Application.Dtos.User;
 using PremierFlow.Application.Interfaces.Auth;
 using PremierFlow.Infrastructure.Identity;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.AuthServices
 {
     public class UserService : IUserService
     {
-        private readonly RoleManager<IdentityRole> roleManager;
-        private readonly UserManager<ApplicationUser> userManager;
+        private readonly RoleManager<IdentityRole> _roleManager;
+        private readonly UserManager<ApplicationUser> _userManager;
+
         public UserService(RoleManager<IdentityRole> roleManager, UserManager<ApplicationUser> userManager)
         {
-            this.roleManager = roleManager;
-            this.userManager = userManager;
-        }
-        public async Task<bool> ChangePasswordAsync(String id, ChangePasswordRequest request)
-        {
-            //si no se confirmo la nueva contraseña o no coincide lanzamos error
-           
-            if (string.IsNullOrWhiteSpace(request.ConfirmPassword) ||
-             !string.Equals(request.NewPassword, request.ConfirmPassword, StringComparison.Ordinal))
-            {
-                throw new Exception("La nueva contraseña no coincide con la confirmación");
-            }
-            //buscamos el usuario 
-            var user=await userManager.FindByIdAsync(id) ?? throw new InvalidOperationException("Usuario no encontrado");
-            var result = await userManager.ChangePasswordAsync(user, request.CurrentPassword, request.NewPassword);
-            EnsureSuccess(result);
-            return true;
+            _roleManager = roleManager;
+            _userManager = userManager;
         }
 
-        public async Task<String> CreateAsync(CreateUserRequest request)
+        #region READS
+
+        public async Task<ApiResponse<List<UsersDTO>>> GetAllAsync()
         {
-            //VALIDAR QUE NO EXISTA OTRO USUARIO CON EL MISMO EMAIL O Nombre DE USUARIO
-            var userExist = await userManager.FindByEmailAsync(request.Email);
-
-            if (userExist != null)
+            try
             {
-                throw new Exception("El usuario con el mismo email ya existe");
-            }
+                var users = await _userManager.Users
+                    .AsNoTracking()
+                    .Where(u => u.Activo)
+                    .ToListAsync();
 
-            var newUser = new ApplicationUser
-            {
-                UserName = request.Email,
-                Email = request.Email,
-                NombreCompleto = request.NombreCompleto ?? "N/A",
-                Activo = request.Activo,
-                Cargo = request.Cargo ?? "N/A",
-                Departamento = request.Departamento ?? "N/A",
-                FechaCreacion = DateTime.UtcNow
-            };
+                var result = new List<UsersDTO>();
 
-            var createResult = await userManager.CreateAsync(newUser, request.Password);
-            EnsureSuccess(createResult);
-
-            if (!request.Activo)
-            {
-                await disableUserAsync(newUser); //si el usuario no esta activo lo deshabilitamos
-            }
-            //SI VINENE ROLES ASIGNAMOSLOS
-            if(request.Roles is {Count:> 0 })
-            {
-                await EnsureRolesExistAsync(request.Roles); //verificamos que los roles existan
-                var addToRolesResult = await userManager.AddToRolesAsync(newUser, request.Roles);
-                EnsureSuccess(addToRolesResult);
-            }
-
-            return newUser.Id;
-
-        }
-
-
-        public async Task<List<UsersDTO>> GetAllAsync()
-        {
-            
-            var user =await userManager.Users
-                .AsNoTracking()
-                .Where(u => u.Activo)
-                .ToListAsync();
-            
-            var result = new List<UsersDTO>();
-            //llenamos lista pero por cada lista asignamos los roles
-            foreach (var u in user)
-            {
-                var rols = await userManager.GetRolesAsync(u);
-                result.Add(new UsersDTO
+                foreach (var user in users)
                 {
-                    Id = u.Id,
-                    NombreCompleto = u.NombreCompleto,
-                    Email = u.Email ?? "N/A",
-                    Activo = u.Activo,
-                    Cargo = u.Cargo,
-                    Roles = rols.ToList()
-                });
-            }
-            //retornamos la lista
-            return result;
-        }
-
-        public async Task<UsersDTO?>? GetByIdAsync(String id)
-        {
-            var user =await userManager.Users
-                .AsNoTracking()
-                .FirstOrDefaultAsync(u=>u.Id==id);
-            
-            if (user == null) return null;
-            var roles = await userManager.GetRolesAsync(user);
-
-            var result = new UsersDTO
-            {
-                Id = user.Id,
-                NombreCompleto = user.NombreCompleto,
-                Email = user.Email ?? "N/A",
-                Activo = user.Activo,
-                Cargo = user.Cargo,
-                Roles = roles.ToList()
-            };
-
-            return  result;
-        }
-
-        public async Task<bool> ResetPasswordAsync(String id, ResetPasswordRequest request)
-        {
-            //1. debemos buscar el usuario
-            var user = await userManager.FindByIdAsync(id) ?? throw new InvalidOperationException("Usuario no encontrado");
-
-            //2. generamos el token de reseteo 
-            var resetToken = await userManager.GeneratePasswordResetTokenAsync(user);
-            var resetResult = await userManager.ResetPasswordAsync(user, resetToken, request.NewPassword);
-            EnsureSuccess(resetResult);
-            return true;
-        }
-
-        public async Task<bool> UpdateAsync(String id, UpdateUserRequest request)
-        {
-           var user =await userManager.FindByIdAsync(id);
-
-            if (user == null)
-            {
-                throw new Exception("Usuario no encontrado");
-            }
-
-            //actualizamos los campos si vienen en el request
-            if (!string.IsNullOrWhiteSpace(request.NombreCompleto))
-            {
-                user.NombreCompleto = request.NombreCompleto;
-            }
-            if (request.Activo.HasValue) //hasValue indica si el valor es nulo o no, si es nulo es false
-            {
-                user.Activo = request.Activo.Value;
-                //si el usuario viene como inactivo lo deshabilitamos
-                if (!request.Activo.Value)
-                {
-                    await disableUserAsync(user);
+                    var roles = await _userManager.GetRolesAsync(user);
+                    result.Add(new UsersDTO
+                    {
+                        Id = user.Id,
+                        NombreCompleto = user.NombreCompleto,
+                        Email = user.Email ?? "N/A",
+                        Activo = user.Activo,
+                        Departamento=user.Departamento,
+                        Cargo = user.Cargo,
+                        Roles = roles.ToList()
+                    });
                 }
-                else
-                {
-                   await EnableUserAsync(user);
-                }
-            }
-            var updateResult = await userManager.UpdateAsync(user);
-            EnsureSuccess(updateResult);
 
-            // Roles:si vienen roles los actualizamos
-            // null => no tocar roles
-            // [] => quitar todos
-            // [..] => reemplazar
-            
-            if(request.Roles != null)
+                return ApiResponse<List<UsersDTO>>.ok(result, "Usuarios obtenidos correctamente");
+            }
+            catch (Exception ex)
             {
-                var newRoles = request.Roles
-                               .Where(r => !string.IsNullOrWhiteSpace(r))
-                               .Select(r => r.Trim())
-                               .Distinct(StringComparer.OrdinalIgnoreCase)
-                               .ToList();
-
-                await EnsureRolesExistAsync(newRoles); //verificamos que los roles existan
-                var currentRoles = await userManager.GetRolesAsync(user); //obtenemos los roles actuales del usuario
-
-                var removeResult= await userManager.RemoveFromRolesAsync(user, currentRoles);//eliminamos todos los roles actuales
-                EnsureSuccess(removeResult);
-                if(newRoles.Count > 0)
-                {
-                    var addResult = await userManager.AddToRolesAsync(user, newRoles); //asignamos los nuevos roles
-                    EnsureSuccess(addResult);
-                }
+                return ApiResponse<List<UsersDTO>>.fail(500,
+                    new[] { ex.Message },
+                    "Error al obtener los usuarios");
             }
-            return true;
-
         }
 
-       
-        private static void EnsureSuccess(IdentityResult result)
+        public async Task<ApiResponse<UsersDTO?>> GetByIdAsync(string id)
         {
-            if (result.Succeeded) return;
+            try
+            {
+                if (string.IsNullOrWhiteSpace(id))
+                {
+                    return ApiResponse<UsersDTO?>.fail(400,
+                        new[] { "El ID es requerido" },
+                        "Datos inválidos");
+                }
 
-            var errors = string.Join(" | ", result.Errors.Select(e => $"{e.Code}: {e.Description}"));
-            throw new InvalidOperationException(errors);
+                var user = await _userManager.Users
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(u => u.Id == id);
+
+                if (user == null)
+                {
+                    return ApiResponse<UsersDTO?>.fail(404,
+                        new[] { "Usuario no encontrado" },
+                        $"No se encontró el usuario con ID: {id}");
+                }
+
+                var roles = await _userManager.GetRolesAsync(user);
+
+                var result = new UsersDTO
+                {
+                    Id = user.Id,
+                    NombreCompleto = user.NombreCompleto,
+                    Email = user.Email ?? "N/A",
+                    Activo = user.Activo,
+                    Cargo = user.Cargo,
+                    Roles = roles.ToList()
+                };
+
+                return ApiResponse<UsersDTO?>.ok(result, "Usuario obtenido correctamente");
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse<UsersDTO?>.fail(500,
+                    new[] { ex.Message },
+                    "Error al obtener el usuario");
+            }
         }
 
-        private async Task EnsureRolesExistAsync(List<string> roles)
+        #endregion
+
+        #region WRITES
+
+        public async Task<ApiResponse<string>> CreateAsync(CreateUserRequest request)
         {
+            try
+            {
+                // Validar request
+                if (string.IsNullOrWhiteSpace(request.Email))
+                {
+                    return ApiResponse<string>.fail(400,
+                        new[] { "El email es requerido" },
+                        "Datos inválidos");
+                }
+
+                if (string.IsNullOrWhiteSpace(request.Password))
+                {
+                    return ApiResponse<string>.fail(400,
+                        new[] { "La contraseña es requerida" },
+                        "Datos inválidos");
+                }
+
+                // Verificar si ya existe
+                var userExist = await _userManager.FindByEmailAsync(request.Email);
+                if (userExist != null)
+                {
+                    return ApiResponse<string>.fail(409,
+                        new[] { "El email ya está registrado" },
+                        "Ya existe un usuario con este email");
+                }
+
+                var newUser = new ApplicationUser
+                {
+                    UserName = request.UserName,
+                    Email = request.Email,
+                    NombreCompleto = request.NombreCompleto ?? "N/A",
+                    Activo = request.Activo,
+                    Cargo = request.Cargo ?? "N/A",
+                    Departamento = request.Departamento ?? "N/A",
+                    FechaCreacion = DateTime.UtcNow
+                };
+
+                var createResult = await _userManager.CreateAsync(newUser, request.Password);
+
+                if (!createResult.Succeeded)
+                {
+                    var errors = createResult.Errors.Select(e => e.Description);
+                    return ApiResponse<string>.fail(400, errors, "Error al crear el usuario");
+                }
+
+                // Si el usuario no está activo, deshabilitarlo
+                if (!request.Activo)
+                {
+                    await DisableUserAsync(newUser);
+                }
+
+                // Asignar roles si vienen
+                if (request.Roles is { Count: > 0 })
+                {
+                    var rolesValidation = await ValidateRolesExistAsync(request.Roles);
+                    if (!rolesValidation.Success)
+                    {
+                        return ApiResponse<string>.fail(rolesValidation.StatusCode,
+                            rolesValidation.Errors,
+                            rolesValidation.message);
+                    }
+
+                    var addToRolesResult = await _userManager.AddToRolesAsync(newUser, request.Roles);
+                    if (!addToRolesResult.Succeeded)
+                    {
+                        var errors = addToRolesResult.Errors.Select(e => e.Description);
+                        return ApiResponse<string>.fail(400, errors, "Error al asignar roles");
+                    }
+                }
+
+                return ApiResponse<string>.ok(newUser.Id, "Usuario creado correctamente");
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse<string>.fail(500,
+                    new[] { ex.Message },
+                    "Error interno al crear el usuario");
+            }
+        }
+
+        public async Task<ApiResponse<bool>> UpdateAsync(string id, UpdateUserRequest request)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(id))
+                {
+                    return ApiResponse<bool>.fail(400,
+                        new[] { "El ID es requerido" },
+                        "Datos inválidos");
+                }
+
+                var user = await _userManager.FindByIdAsync(id);
+                if (user == null)
+                {
+                    return ApiResponse<bool>.fail(404,
+                        new[] { "Usuario no encontrado" },
+                        $"No se encontró el usuario con ID: {id}");
+                }
+
+                // Actualizar campos si vienen en el request
+                if (!string.IsNullOrWhiteSpace(request.NombreCompleto))
+                {
+                    user.NombreCompleto = request.NombreCompleto;
+                }
+                if (!string.IsNullOrWhiteSpace(request.Cargo))
+                {
+                    user.Cargo = request.Cargo;
+                }
+
+                if (request.Activo.HasValue)
+                {
+                    user.Activo = request.Activo.Value;
+
+                    if (!request.Activo.Value)
+                    {
+                        await DisableUserAsync(user);
+                    }
+                    else
+                    {
+                        await EnableUserAsync(user);
+                    }
+                }
+
+                var updateResult = await _userManager.UpdateAsync(user);
+                if (!updateResult.Succeeded)
+                {
+                    var errors = updateResult.Errors.Select(e => e.Description);
+                    return ApiResponse<bool>.fail(400, errors, "Error al actualizar el usuario");
+                }
+
+                // Actualizar roles si vienen
+                if (request.Roles != null)
+                {
+                    var newRoles = request.Roles
+                        .Where(r => !string.IsNullOrWhiteSpace(r))
+                        .Select(r => r.Trim())
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .ToList();
+
+                    if (newRoles.Count > 0)
+                    {
+                        var rolesValidation = await ValidateRolesExistAsync(newRoles);
+                        if (!rolesValidation.Success)
+                        {
+                            return ApiResponse<bool>.fail(rolesValidation.StatusCode,
+                                rolesValidation.Errors,
+                                rolesValidation.message);
+                        }
+                    }
+
+                    var currentRoles = await _userManager.GetRolesAsync(user);
+                    var removeResult = await _userManager.RemoveFromRolesAsync(user, currentRoles);
+
+                    if (!removeResult.Succeeded)
+                    {
+                        var errors = removeResult.Errors.Select(e => e.Description);
+                        return ApiResponse<bool>.fail(400, errors, "Error al remover roles anteriores");
+                    }
+
+                    if (newRoles.Count > 0)
+                    {
+                        var addResult = await _userManager.AddToRolesAsync(user, newRoles);
+                        if (!addResult.Succeeded)
+                        {
+                            var errors = addResult.Errors.Select(e => e.Description);
+                            return ApiResponse<bool>.fail(400, errors, "Error al asignar nuevos roles");
+                        }
+                    }
+                }
+
+                return ApiResponse<bool>.ok(true, "Usuario actualizado correctamente");
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse<bool>.fail(500,
+                    new[] { ex.Message },
+                    "Error interno al actualizar el usuario");
+            }
+        }
+
+        public async Task<ApiResponse<bool>> ChangePasswordAsync(string id, ChangePasswordRequest request)
+        {
+            try
+            {
+                // Validar confirmación de contraseña
+                if (string.IsNullOrWhiteSpace(request.ConfirmPassword) ||
+                    !string.Equals(request.NewPassword, request.ConfirmPassword, StringComparison.Ordinal))
+                {
+                    return ApiResponse<bool>.fail(400,
+                        new[] { "Las contraseñas no coinciden" },
+                        "La nueva contraseña no coincide con la confirmación");
+                }
+
+                if (string.IsNullOrWhiteSpace(request.CurrentPassword))
+                {
+                    return ApiResponse<bool>.fail(400,
+                        new[] { "La contraseña actual es requerida" },
+                        "Datos inválidos");
+                }
+
+                var user = await _userManager.FindByIdAsync(id);
+                if (user == null)
+                {
+                    return ApiResponse<bool>.fail(404,
+                        new[] { "Usuario no encontrado" },
+                        $"No se encontró el usuario con ID: {id}");
+                }
+
+                var result = await _userManager.ChangePasswordAsync(user, request.CurrentPassword, request.NewPassword);
+
+                if (!result.Succeeded)
+                {
+                    var errors = result.Errors.Select(e => e.Description);
+                    return ApiResponse<bool>.fail(400, errors, "Error al cambiar la contraseña");
+                }
+
+                return ApiResponse<bool>.ok(true, "Contraseña cambiada correctamente");
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse<bool>.fail(500,
+                    new[] { ex.Message },
+                    "Error interno al cambiar la contraseña");
+            }
+        }
+
+        #endregion
+
+        #region ADMIN
+
+        public async Task<ApiResponse<bool>> ResetPasswordAsync(string id, ResetPasswordRequest request)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(request.NewPassword))
+                {
+                    return ApiResponse<bool>.fail(400,
+                        new[] { "La nueva contraseña es requerida" },
+                        "Datos inválidos");
+                }
+
+                var user = await _userManager.FindByIdAsync(id);
+                if (user == null)
+                {
+                    return ApiResponse<bool>.fail(404,
+                        new[] { "Usuario no encontrado" },
+                        $"No se encontró el usuario con ID: {id}");
+                }
+
+                var resetToken = await _userManager.GeneratePasswordResetTokenAsync(user);
+                var resetResult = await _userManager.ResetPasswordAsync(user, resetToken, request.NewPassword);
+
+                if (!resetResult.Succeeded)
+                {
+                    var errors = resetResult.Errors.Select(e => e.Description);
+                    return ApiResponse<bool>.fail(400, errors, "Error al resetear la contraseña");
+                }
+
+                return ApiResponse<bool>.ok(true, "Contraseña reseteada correctamente");
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse<bool>.fail(500,
+                    new[] { ex.Message },
+                    "Error interno al resetear la contraseña");
+            }
+        }
+
+        #endregion
+
+        #region PRIVATE METHODS
+
+        private async Task<ApiResponse<bool>> ValidateRolesExistAsync(List<string> roles)
+        {
+            var invalidRoles = new List<string>();
+
             foreach (var role in roles.Distinct(StringComparer.OrdinalIgnoreCase))
             {
                 if (string.IsNullOrWhiteSpace(role))
-                    throw new InvalidOperationException("Nombre de rol inválido.");
+                {
+                    return ApiResponse<bool>.fail(400,
+                        new[] { "Nombre de rol inválido" },
+                        "Los nombres de rol no pueden estar vacíos");
+                }
 
-                var exists = await roleManager.RoleExistsAsync(role);
+                var exists = await _roleManager.RoleExistsAsync(role);
                 if (!exists)
-                    throw new InvalidOperationException($"El rol '{role}' no existe.");
+                {
+                    invalidRoles.Add(role);
+                }
             }
-        }
-        private static bool IsActive(ApplicationUser user)
-        {
-            // Si usas lockout como “activo/inactivo”:
-            // inactivo => LockoutEnabled true y LockoutEnd en futuro
-            if (!user.LockoutEnabled) return true;
-            if (user.LockoutEnd == null) return true;
-            return user.LockoutEnd <= DateTimeOffset.UtcNow;
-        }
-        private async Task disableUserAsync(ApplicationUser user)
-        {
-            var enableLockoutResult = await userManager.SetLockoutEnabledAsync(user, true); //con esto bloqueamos el usuario
-            EnsureSuccess(enableLockoutResult); //verificamos que se haya bloqueado correctamente
 
-            //lo bloqueamos por mucho tiempo
-            var lockoutResult = await userManager.SetLockoutEndDateAsync(user, DateTimeOffset.UtcNow.AddYears(100));
-            EnsureSuccess(lockoutResult);
+            if (invalidRoles.Count > 0)
+            {
+                return ApiResponse<bool>.fail(400,
+                    invalidRoles.Select(r => $"El rol '{r}' no existe"),
+                    "Uno o más roles no existen");
+            }
 
+            return ApiResponse<bool>.ok(true);
+        }
+
+        private async Task DisableUserAsync(ApplicationUser user)
+        {
+            await _userManager.SetLockoutEnabledAsync(user, true);
+            await _userManager.SetLockoutEndDateAsync(user, DateTimeOffset.UtcNow.AddYears(100));
         }
 
         private async Task EnableUserAsync(ApplicationUser user)
         {
-            var enableLockout = await userManager.SetLockoutEnabledAsync(user, true);
-            EnsureSuccess(enableLockout);
-
-            var unlockResult = await userManager.SetLockoutEndDateAsync(user, DateTimeOffset.UtcNow);
-            EnsureSuccess(unlockResult);
+            await _userManager.SetLockoutEnabledAsync(user, true);
+            await _userManager.SetLockoutEndDateAsync(user, DateTimeOffset.UtcNow);
         }
+
+        #endregion
     }
 }

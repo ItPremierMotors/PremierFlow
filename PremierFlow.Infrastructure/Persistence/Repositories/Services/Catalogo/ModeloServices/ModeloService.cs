@@ -11,10 +11,10 @@ using System.Text;
 namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Catalogo.ModeloServices
 {
    
-    public class ModeloServices : IModeloService
+    public class ModeloService : IModeloService
     {
         private readonly PremierFlowDbContext context;
-        public ModeloServices(PremierFlowDbContext context) {
+        public ModeloService(PremierFlowDbContext context) {
             this.context = context;
         }
         public async Task<ApiResponse<ModeloDTO>> CreateAsync(ModeloDTO dto, string usuarioId)
@@ -26,6 +26,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Catalogo.
             }
             var modelo = new Modelo
             {
+                MarcaId=dto.MarcaId,
                 Codigo = dto.Codigo,
                 Nombre = dto.Nombre,
                 Segmento = dto.Segmento,

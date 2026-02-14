@@ -192,6 +192,10 @@ namespace PremierFlow.Application.Dtos.Vehiculos
         #region Ventas
         public int? ClienteId { get; set; }
         public decimal? PrecioLista { get; set; }
+        public decimal? PrecioVenta { get; set; }
+        public DateTime? FechaVenta { get; set; }
+        public DateTime? FechaEntrega { get; set; }
+        public string? VendedorId { get; set; }
         #endregion
 
         #region Taller

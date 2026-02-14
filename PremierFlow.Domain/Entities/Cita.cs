@@ -9,7 +9,7 @@ namespace PremierFlow.Domain.Entities
     // <summary>
     /// Representa una cita agendada (Pre-Orden).
     /// </summary>
-    public class Cita : AuditableEntity
+    public class Cita : SoftDeletableEntity
     {
         public int CitaId { get; set; }
 
@@ -92,6 +92,8 @@ namespace PremierFlow.Domain.Entities
 
         public void Completar()
         {
+            if (Estado != EstadoCita.EnProceso)
+                throw new InvalidOperationException("Solo se pueden completar citas en proceso");
             Estado = EstadoCita.Completada;
         }
     }

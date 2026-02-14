@@ -9,7 +9,7 @@ namespace PremierFlow.Domain.Entities
     /// <summary>
     /// Documenta el check-in del vehículo (recepción física).
     /// </summary>
-    public class Recepcion : AuditableEntity
+    public class Recepcion : SoftDeletableEntity
     {
         public int RecepcionId { get; set; }
 

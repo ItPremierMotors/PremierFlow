@@ -206,13 +206,13 @@ namespace PremierFlow.Domain.Entities
         /// <summary>
         /// Verifica si tiene una OS activa.
         /// </summary>
-        public bool TieneOsActiva(IEnumerable<OrdenServicio> ordenes)
-        {
-            return ordenes.Any(os =>
-                os.VehiculoId == VehiculoId &&
-                os.Estado?.Codigo != EstadoOs.Estados.Cerrada &&
-                os.Estado?.Codigo != EstadoOs.Estados.Cancelada);
-        }
+        //public bool TieneOsActiva(IEnumerable<OrdenServicio> ordenes)
+        //{
+        //    return ordenes.Any(os =>
+        //        os.VehiculoId == VehiculoId &&
+        //        os.Estado?.Codigo != EstadoOs.Estados.Cerrada &&
+        //        os.Estado?.Codigo != EstadoOs.Estados.Cancelada);
+        //}
 
         /// <summary>
         /// Marca el vehículo como vendido.

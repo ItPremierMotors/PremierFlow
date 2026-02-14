@@ -1,4 +1,5 @@
-﻿using PremierFlow.Application.Dtos.User;
+﻿using PremierFlow.Application.Common;
+using PremierFlow.Application.Dtos.User;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -8,15 +9,15 @@ namespace PremierFlow.Application.Interfaces.Auth
     public interface IUserService
     {
         //READS
-        Task<List<UsersDTO>> GetAllAsync();
-        Task<UsersDTO?>? GetByIdAsync(String id); // Returns null if user not found
+        Task<ApiResponse<List<UsersDTO>>> GetAllAsync();
+        Task<ApiResponse<UsersDTO?>>? GetByIdAsync(String id); // Returns null if user not found
 
         //WRITES
-        Task<String> CreateAsync(CreateUserRequest request);
-        Task<bool> UpdateAsync(String id, UpdateUserRequest request);
-        Task<bool> ChangePasswordAsync(String id, ChangePasswordRequest request);
+        Task<ApiResponse<String>> CreateAsync(CreateUserRequest request);
+        Task<ApiResponse<bool>> UpdateAsync(String id, UpdateUserRequest request);
+        Task<ApiResponse<bool>> ChangePasswordAsync(String id, ChangePasswordRequest request);
 
         //ADMIN
-        Task<bool> ResetPasswordAsync(String id, ResetPasswordRequest request);
+        Task<ApiResponse<bool>> ResetPasswordAsync(String id, ResetPasswordRequest request);
     }
 }

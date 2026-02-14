@@ -10,7 +10,7 @@ namespace PremierFlow.Domain.Entities
     /// <summary>
     /// Define bloques de tiempo específicos dentro de la capacidad del taller.
     /// </summary>
-    public class BloqueHorario : AuditableEntity
+    public class BloqueHorario : SoftDeletableEntity
     {
         public int BloqueId { get; set; }
 
@@ -26,7 +26,7 @@ namespace PremierFlow.Domain.Entities
 
         public TipoBloqueHorario TipoBloque { get; set; } = TipoBloqueHorario.Estandar;
 
-        public bool Activo { get; set; } = true;
+        
 
         // Navegación
         public virtual CapacidadTaller Capacidad { get; set; } = null!;

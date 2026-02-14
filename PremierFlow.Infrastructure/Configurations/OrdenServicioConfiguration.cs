@@ -39,7 +39,7 @@ namespace PremierFlow.Infrastructure.Configurations
             builder.Property(e => e.FechaCreacion).HasColumnName("fecha_creacion");
             builder.Property(e => e.UsuarioModificaId).HasColumnName("usuario_modifica_id").HasMaxLength(450);
             builder.Property(e => e.FechaModificacion).HasColumnName("fecha_modificacion");
-
+            builder.Property(e => e.Activo).HasColumnName("activo").HasDefaultValue(true);
             builder.HasOne(e => e.Cita).WithOne(c => c.OrdenServicio).HasForeignKey<OrdenServicio>(e => e.CitaId).OnDelete(DeleteBehavior.Restrict);
             builder.HasOne(e => e.Vehiculo).WithMany(v => v.OrdenesServicio).HasForeignKey(e => e.VehiculoId).OnDelete(DeleteBehavior.Restrict);
             builder.HasOne(e => e.Cliente).WithMany(c => c.OrdenesServicio).HasForeignKey(e => e.ClienteId).OnDelete(DeleteBehavior.Restrict);
@@ -86,7 +86,7 @@ namespace PremierFlow.Infrastructure.Configurations
             builder.Property(e => e.FechaCreacion).HasColumnName("fecha_creacion");
             builder.Property(e => e.UsuarioModificaId).HasColumnName("usuario_modifica_id").HasMaxLength(450);
             builder.Property(e => e.FechaModificacion).HasColumnName("fecha_modificacion");
-
+            builder.Property(e => e.Activo).HasColumnName("activo").HasDefaultValue(true);
             builder.HasIndex(e => e.OsId).IsUnique();
             builder.Ignore(e => e.TieneFirmaCliente);
             builder.Ignore(e => e.CantidadAccesoriosVerificados);
@@ -112,7 +112,7 @@ namespace PremierFlow.Infrastructure.Configurations
             builder.Property(e => e.FechaCreacion).HasColumnName("fecha_creacion");
             builder.Property(e => e.UsuarioModificaId).HasColumnName("usuario_modifica_id").HasMaxLength(450);
             builder.Property(e => e.FechaModificacion).HasColumnName("fecha_modificacion");
-
+            builder.Property(e => e.Activo).HasColumnName("activo").HasDefaultValue(true);
             builder.HasOne(e => e.OrdenServicio).WithMany(o => o.Evidencias).HasForeignKey(e => e.OsId).OnDelete(DeleteBehavior.Cascade);
             builder.HasOne(e => e.Recepcion).WithMany(r => r.Evidencias).HasForeignKey(e => e.RecepcionId).OnDelete(DeleteBehavior.Restrict);
             builder.HasIndex(e => e.OsId);
@@ -150,7 +150,7 @@ namespace PremierFlow.Infrastructure.Configurations
             builder.Property(e => e.FechaCreacion).HasColumnName("fecha_creacion");
             builder.Property(e => e.UsuarioModificaId).HasColumnName("usuario_modifica_id").HasMaxLength(450);
             builder.Property(e => e.FechaModificacion).HasColumnName("fecha_modificacion");
-
+            builder.Property(e => e.Activo).HasColumnName("activo").HasDefaultValue(true);
             builder.HasOne(e => e.OrdenServicio).WithMany(o => o.Servicios).HasForeignKey(e => e.OsId).OnDelete(DeleteBehavior.Cascade);
             builder.HasOne(e => e.TipoServicio).WithMany(t => t.OsServicios).HasForeignKey(e => e.TipoServicioId).OnDelete(DeleteBehavior.Restrict);
             builder.HasOne(e => e.Tecnico).WithMany(t => t.ServiciosAsignados).HasForeignKey(e => e.TecnicoAsignadoId).OnDelete(DeleteBehavior.Restrict);
@@ -177,6 +177,7 @@ namespace PremierFlow.Infrastructure.Configurations
             builder.Property(e => e.FechaFin).HasColumnName("fecha_fin");
             builder.Property(e => e.Estado).HasColumnName("estado").HasConversion<string>().HasMaxLength(20);
             builder.Property(e => e.Observaciones).HasColumnName("observaciones").HasColumnType("nvarchar(1000)");
+            builder.Property(e => e.Activo).HasColumnName("activo").HasDefaultValue(true);
             builder.Property(e => e.UsuarioCreaId).HasColumnName("usuario_crea_id").HasMaxLength(450);
             builder.Property(e => e.FechaCreacion).HasColumnName("fecha_creacion");
             builder.Property(e => e.UsuarioModificaId).HasColumnName("usuario_modifica_id").HasMaxLength(450);
@@ -213,6 +214,7 @@ namespace PremierFlow.Infrastructure.Configurations
             builder.Property(e => e.FechaCreacion).HasColumnName("fecha_creacion");
             builder.Property(e => e.UsuarioModificaId).HasColumnName("usuario_modifica_id").HasMaxLength(450);
             builder.Property(e => e.FechaModificacion).HasColumnName("fecha_modificacion");
+            builder.Property(e => e.Activo).HasColumnName("activo").HasDefaultValue(true);
 
             builder.HasOne(e => e.Vehiculo).WithMany(v => v.HistorialAts).HasForeignKey(e => e.VehiculoId).OnDelete(DeleteBehavior.Restrict);
             builder.HasOne(e => e.OrdenServicio).WithMany(o => o.HistorialAts).HasForeignKey(e => e.OsId).OnDelete(DeleteBehavior.Restrict);

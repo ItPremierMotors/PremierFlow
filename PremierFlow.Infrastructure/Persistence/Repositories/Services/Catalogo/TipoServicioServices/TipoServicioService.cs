@@ -18,9 +18,37 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Catalogo.
             this.context = context;
         }
 
-        public Task<ApiResponse<TipoServicioDTO>> CreateAsync(CreateTipoServicioDTO dto, string usuarioId)
+        public async Task<ApiResponse<TipoServicioDTO>> CreateAsync(CreateTipoServicioDTO dto, string usuarioId)
         {
-            throw new NotImplementedException();
+            // 1. Validar código duplicado
+            if (await CodigoExiste(dto.Codigo))
+                return ApiResponse<TipoServicioDTO>.fail(400, null, "Ya existe un tipo de servicio con ese código.");
+            
+            if (!Enum.IsDefined(typeof(ClasificacionServicio), dto.Clasificacion))
+                return ApiResponse<TipoServicioDTO>.fail(400, null, "Clasificación de servicio inválida.");
+            
+
+            // 2. Crear
+            var tipo = new TipoServicio
+            {
+                Codigo = dto.Codigo,
+                Nombre = dto.Nombre,
+                Descripcion = dto.Descripcion,
+                DuracionEstimadaMin = dto.DuracionEstimadaMin,
+                Clasificacion = dto.Clasificacion,
+                PermiteWalkIn = dto.PermiteWalkIn,
+                RequiereCita = dto.RequiereCita,
+                PrecioBase = dto.PrecioBase,
+                StockRequerido = dto.StockRequerido,
+                Activo = true,
+                UsuarioCreaId = usuarioId,
+                FechaCreacion = DateTime.UtcNow
+            };
+
+            context.TiposServicio.Add(tipo);
+            await context.SaveChangesAsync();
+
+            return ApiResponse<TipoServicioDTO>.ok(MapToDto(tipo), "Tipo de servicio creado exitosamente.");
         }
 
         public async Task<ApiResponse<bool>> DeleteAsync(int tipoServicioId, string usuarioId)
@@ -77,6 +105,13 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Catalogo.
 
         public async Task<ApiResponse<List<TipoServicioDTO>>> GetByClasificacionAsync(ClasificacionServicio clasificacion)
         {
+            if(!Enum.IsDefined(typeof(ClasificacionServicio), clasificacion))
+            {
+                return ApiResponse<List<TipoServicioDTO>>
+                     .fail(400, null, "Clasificación de servicio inválida.");
+            }
+
+
             var tipos = await context.TiposServicio
                 .AsNoTracking()
                 .Where(t => t.Clasificacion == clasificacion && t.Activo)
@@ -141,6 +176,8 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Catalogo.
             // 1. Buscar
             var tipo = await context.TiposServicio
                 .FirstOrDefaultAsync(t => t.TipoServicioId == dto.TipoServicioId && t.Activo);
+            if(!Enum.IsDefined(typeof(ClasificacionServicio),dto.Clasificacion ))
+                return ApiResponse<TipoServicioDTO>.fail(400, null, "Clasificación de servicio inválida.");
 
             if (tipo == null)
                 return ApiResponse<TipoServicioDTO>.fail(404, null, "Tipo de servicio no encontrado.");

@@ -31,7 +31,34 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Catalogo.
             if (codigoExiste)
                 return ApiResponse<VersionVehiculoDTO>.fail(400, null, "Ya existe una versión con ese código.");
 
-            // 3. Crear la versión
+            // 3. Normalización de cilindraje (litros)
+            if (dto.Cilindraje.HasValue)
+            {
+                // Si viene en cc (ej: 1392), convertir a litros
+                if (dto.Cilindraje > 20)
+                {
+                    dto.Cilindraje = Math.Round(dto.Cilindraje.Value / 1000, 2);
+                }
+
+                // Validar rango razonable
+                if (dto.Cilindraje < 0.5m || dto.Cilindraje > 10.0m)
+                {
+                    return ApiResponse<VersionVehiculoDTO>.fail(
+                        400, null, "El cilindraje debe estar entre 0.5 y 10.0 litros.");
+                }
+            }
+
+            // 4. Validaciones de especificaciones técnicas (independientes del cilindraje)
+            if (dto.PotenciaHp is < 30 or > 2000)
+                return ApiResponse<VersionVehiculoDTO>.fail(400, null, "Potencia HP fuera de rango (30-2000).");
+
+            if (dto.TorqueNm is < 50 or > 3000)
+                return ApiResponse<VersionVehiculoDTO>.fail(400, null, "Torque fuera de rango (50-3000 Nm).");
+
+            if (dto.PrecioBase is < 0 or > 1_000_000)
+                return ApiResponse<VersionVehiculoDTO>.fail(400, null, "Precio base inválido (0-1,000,000).");
+
+            // 5. Crear la versión
             var version = new VersionVehiculo
             {
                 ModeloId = dto.ModeloId,
@@ -54,11 +81,11 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Catalogo.
                 FechaCreacion = DateTime.UtcNow
             };
 
-            // 4. Guardar
+            // 6. Guardar
             context.Versiones.Add(version);
             await context.SaveChangesAsync();
 
-            // 5. Asignar navegación para el MapToDto
+            // 7. Asignar navegación para el MapToDto
             version.Modelo = modelo;
 
             return ApiResponse<VersionVehiculoDTO>.ok(MapToDto(version), "Versión creada exitosamente.");

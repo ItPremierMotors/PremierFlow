@@ -10,6 +10,7 @@ namespace PremierFlow.Application.Dtos.User
         public string NombreCompleto { get; set; } = null!;
         public string Email { get; set; } = null!;
         public bool Activo { get; set; }
+        public string Departamento { get; set; } = null!;
         public string Cargo { get; set; } = null!;
         public List<string> Roles { get; set; } = new();
     }
@@ -19,16 +20,19 @@ namespace PremierFlow.Application.Dtos.User
         public string Email { get; set; } = null!;
         public string Password { get; set; } = null!;
         public string? NombreCompleto { get; set; }
+        public string? UserName { get; set; }
         public string? Cargo { get; set; }
         public string Departamento { get; set; } = null!;
         public bool Activo { get; set; } = true;
 
         public List<string>? Roles { get; set; }
+
     }
 
     public class UpdateUserRequest
     {
         public string? NombreCompleto { get; set; }
+        public string? Cargo { get; set; }
         public bool? Activo { get; set; } // si lo mandas false => deshabilita
         public List<string>? Roles { get; set; }
 

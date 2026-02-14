@@ -10,7 +10,7 @@ namespace PremierFlow.Domain.Entities
     /// <summary>
     /// Detalle de servicios incluidos en cada Orden de Servicio.
     /// </summary>
-    public class OsServicio : AuditableEntity
+    public class OsServicio : SoftDeletableEntity
     {
         public int OsServicioId { get; set; }
 

@@ -9,7 +9,7 @@ namespace PremierFlow.Domain.Entities
     /// <summary>
     /// Almacena fotos y evidencias de la recepción del vehículo.
     /// </summary>
-    public class Evidencia : AuditableEntity
+    public class Evidencia : SoftDeletableEntity
     {
         public int EvidenciaId { get; set; }
 

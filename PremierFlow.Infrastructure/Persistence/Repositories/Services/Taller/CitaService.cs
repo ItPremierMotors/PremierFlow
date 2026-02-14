@@ -1,0 +1,626 @@
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Validation;
+using PremierFlow.Application.Common;
+using PremierFlow.Application.Dtos.Taller;
+using PremierFlow.Application.Interfaces.Taller;
+using PremierFlow.Domain.Entities;
+using PremierFlow.Domain.Enums;
+using System;
+using System.Collections.Generic;
+using System.Text;
+
+namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
+{
+    public class CitaService : ICitaService
+    {
+        private readonly PremierFlowDbContext context;
+        public CitaService(PremierFlowDbContext context)
+        {
+            this.context = context;
+        }
+        #region consultas
+        public async Task<ApiResponse<CitaDTO>> GetByIdAsync(int citaId)
+        {
+            var cita = await context.Citas
+                .Include(c => c.Cliente)
+                .Include(c => c.Vehiculo)
+                    .ThenInclude(v => v.Marca)
+                .Include(c => c.Vehiculo)
+                    .ThenInclude(v => v.Modelo)
+                .Include(c => c.TipoServicio)
+                .Include(c => c.Sucursal)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c => c.CitaId == citaId && c.Activo);
+
+            if (cita == null)
+                return ApiResponse<CitaDTO>.fail(404, null, "Cita no encontrada");
+            return ApiResponse<CitaDTO>.ok(MapToDto(cita));
+
+        }
+        public async Task<ApiResponse<CitaDTO>> GetByCodigoAsync(string codigoCita)
+        {
+            var cita = await context.Citas
+               .Include(c => c.Cliente)
+               .Include(c => c.Vehiculo)
+                   .ThenInclude(v => v.Marca)
+               .Include(c => c.Vehiculo)
+                   .ThenInclude(v => v.Modelo)
+               .Include(c => c.TipoServicio)
+               .Include(c => c.Sucursal)
+               .AsNoTracking()
+               .FirstOrDefaultAsync(c => c.CodigoCita == codigoCita && c.Activo);
+            if (cita == null)
+                return ApiResponse<CitaDTO>.fail(404, null, "Cita no encontrada.");
+
+            return ApiResponse<CitaDTO>.ok(MapToDto(cita), "Cita obtenida.");
+        }
+
+        public async Task<ApiResponse<List<CitaDTO>>> GetAllAsync()
+        {
+            var cita = await context.Citas
+               .Include(c => c.Cliente)
+               .Include(c => c.Vehiculo)
+                   .ThenInclude(v => v.Marca)
+               .Include(c => c.Vehiculo)
+                   .ThenInclude(v => v.Modelo)
+               .Include(c => c.TipoServicio)
+               .Include(c => c.Sucursal)
+               .AsNoTracking()
+               .Where(c => c.Activo)
+               .OrderByDescending(c => c.FechaHoraInicio)
+               .ToListAsync();
+            var dtos = cita.Select(MapToDto).ToList();
+            return ApiResponse<List<CitaDTO>>.ok(dtos, "Citas Obtenidas");
+        }
+        public async Task<ApiResponse<List<CitaDTO>>> GetByFechaAsync(DateTime fecha, int? sucursalId = null)
+        {
+            var query = context.Citas
+                .Include(c => c.Cliente)
+                .Include(c => c.Vehiculo)
+                   .ThenInclude(V => V.Marca)
+                .Include(v => v.Vehiculo)
+                    .ThenInclude(v => v.Modelo)
+                .Include(c => c.TipoServicio)
+                .Include(c => c.Sucursal)
+                .AsNoTracking()
+                .Where(c => c.FechaHoraInicio.Date == fecha.Date && c.Activo);
+
+            if (sucursalId.HasValue)
+                query = query.Where(c => c.SucursalId == sucursalId);
+            var citas = await query.OrderBy(c => c.FechaHoraInicio).ToListAsync();
+            var dtos = citas.Select(MapToDto).ToList();
+            return ApiResponse<List<CitaDTO>>.ok(dtos, "citas obtenidas");
+        }
+        public async Task<ApiResponse<List<CitaDTO>>> GetByClienteAsync(int clienteId)
+        {
+            var citas = await context.Citas
+                .Include(c => c.Cliente)
+                .Include(c => c.Vehiculo)
+                    .ThenInclude(v => v.Marca)
+                .Include(c => c.Vehiculo)
+                    .ThenInclude(v => v.Modelo)
+                .Include(c => c.TipoServicio)
+                .Include(c => c.Sucursal)
+                .AsNoTracking()
+                .Where(c => c.ClienteId == clienteId && c.Activo)
+                .OrderByDescending(c => c.FechaHoraInicio)
+                .ToListAsync();
+
+            var dtos = citas.Select(MapToDto).ToList();
+
+            return ApiResponse<List<CitaDTO>>.ok(dtos, "Citas obtenidas.");
+        }
+
+        public async Task<ApiResponse<List<CitaDTO>>> GetByVehiculoAsync(int vehiculoId)
+        {
+            var citas = await context.Citas
+                .Include(c => c.Cliente)
+                .Include(c => c.Vehiculo)
+                    .ThenInclude(v => v.Marca)
+                .Include(c => c.Vehiculo)
+                    .ThenInclude(v => v.Modelo)
+                .Include(c => c.TipoServicio)
+                .Include(c => c.Sucursal)
+                .AsNoTracking()
+                .Where(c => c.VehiculoId == vehiculoId && c.Activo)
+                .OrderByDescending(c => c.FechaHoraInicio)
+                .ToListAsync();
+
+            var dtos = citas.Select(MapToDto).ToList();
+
+            return ApiResponse<List<CitaDTO>>.ok(dtos, "Citas obtenidas.");
+        }
+        public async Task<ApiResponse<List<CitaDTO>>> GetByEstadoAsync(EstadoCita estado, int? sucursalId = null)
+        {
+            var query = context.Citas
+                .Include(c => c.Cliente)
+                .Include(c => c.Vehiculo)
+                    .ThenInclude(v => v.Marca)
+                .Include(c => c.Vehiculo)
+                    .ThenInclude(v => v.Modelo)
+                .Include(c => c.TipoServicio)
+                .Include(c => c.Sucursal)
+                .AsNoTracking()
+                .Where(c => c.Estado == estado && c.Activo);
+
+            if (sucursalId.HasValue)
+                query = query.Where(c => c.SucursalId == sucursalId);
+
+            var citas = await query
+                .OrderBy(c => c.FechaHoraInicio)
+                .ToListAsync();
+
+            var dtos = citas.Select(MapToDto).ToList();
+
+            return ApiResponse<List<CitaDTO>>.ok(dtos, "Citas obtenidas.");
+        }
+        public async Task<ApiResponse<List<CitaDTO>>> GetActivasDelDiaAsync(DateTime fecha, int? sucursalId = null)
+        {
+            var query = context.Citas
+                .Include(c => c.Cliente)
+                .Include(c => c.Vehiculo)
+                    .ThenInclude(v => v.Marca)
+                .Include(c => c.Vehiculo)
+                    .ThenInclude(v => v.Modelo)
+                .Include(c => c.TipoServicio)
+                .Include(c => c.Sucursal)
+                .AsNoTracking()
+                .Where(c => c.FechaHoraInicio.Date == fecha.Date &&
+                           (c.Estado == EstadoCita.Agendada || c.Estado == EstadoCita.Confirmada) &&
+                           c.Activo);
+
+            if (sucursalId.HasValue)
+                query = query.Where(c => c.SucursalId == sucursalId);
+
+            var citas = await query
+                .OrderBy(c => c.FechaHoraInicio)
+                .ToListAsync();
+
+            var dtos = citas.Select(MapToDto).ToList();
+
+            return ApiResponse<List<CitaDTO>>.ok(dtos, "Citas activas obtenidas.");
+        }
+        #endregion
+
+        #region Acciones
+         public async Task<ApiResponse<CitaDTO>> AgendarAsync(CreateCitaDTO dto, string usuarioId)
+        {
+            //1. validar ciente
+            var cliente = await context.Clientes
+             .FirstOrDefaultAsync(c => c.ClienteId == dto.ClienteId && c.Activo);
+            if (cliente == null)
+                return ApiResponse<CitaDTO>.fail(404, null, "cliente no encontrado");
+
+            //2. validar que el vehiculo pertenezca al cliente
+            var vehiculo = await context.Vehiculos
+                .Include(v => v.Marca)
+                .Include(v => v.Modelo)
+                .FirstOrDefaultAsync(v => v.VehiculoId == dto.VehiculoId && v.Activo);
+
+            if (vehiculo == null)
+            return ApiResponse<CitaDTO>.fail(404, null, "Vehículo no encontrado.");
+
+            if (vehiculo.ClienteId != dto.ClienteId)
+                return ApiResponse<CitaDTO>.fail(400, null, "El vehículo no pertenece al cliente.");
+            // 3. Validar tipo de servicio
+            var tipoServicio = await context.TiposServicio
+                .FirstOrDefaultAsync(t => t.TipoServicioId == dto.TipoServicioId && t.Activo);
+
+            if (tipoServicio == null)
+                return ApiResponse<CitaDTO>.fail(404, null, "Tipo de servicio no encontrado.");
+
+            // 4. Validar que no tenga cita activa para el mismo vehículo
+            var tieneCitaActiva = await context.Citas
+                .AnyAsync(c => c.VehiculoId == dto.VehiculoId &&
+                              (c.Estado == EstadoCita.Agendada || c.Estado == EstadoCita.Confirmada) &&
+                              c.Activo);
+
+            if (tieneCitaActiva)
+                return ApiResponse<CitaDTO>.fail(400, null, "El vehículo ya tiene una cita activa.");
+
+            // 5. Validar fecha futura
+            if (dto.FechaHoraInicio <= DateTime.Now)
+                return ApiResponse<CitaDTO>.fail(400, null, "La fecha de la cita debe ser futura.");
+
+            // 6. Calcular hora fin
+            var fechaHoraFin = dto.FechaHoraInicio.AddMinutes(tipoServicio.DuracionEstimadaMin);
+
+            // 7. Validar capacidad del día (si existe)
+            var capacidad = await context.CapacidadTaller
+                .FirstOrDefaultAsync(c => c.Fecha.Date == dto.FechaHoraInicio.Date &&
+                                         c.SucursalId == dto.SucursalId &&
+                                         c.Activo);
+
+            if (capacidad != null)
+            {
+                if (!capacidad.PermiteAgendamiento)
+                    return ApiResponse<CitaDTO>.fail(400, null, "No se permite agendar citas para esta fecha.");
+
+                if (!capacidad.TieneCapacidadPara(tipoServicio.DuracionEstimadaMin))
+                    return ApiResponse<CitaDTO>.fail(400, null, "No hay capacidad disponible para esta fecha.");
+            }
+
+            // 8. Validar bloque horario (si se proporciona)
+            BloqueHorario? bloque = null;
+            if (dto.BloqueHorarioId.HasValue)
+            {
+                bloque = await context.BloquesHorario
+                    .FirstOrDefaultAsync(b => b.BloqueId == dto.BloqueHorarioId && b.Activo);
+
+                if (bloque == null)
+                    return ApiResponse<CitaDTO>.fail(404, null, "Bloque horario no encontrado.");
+
+                if (!bloque.TieneEspacioDisponible)
+                    return ApiResponse<CitaDTO>.fail(400, null, "No hay espacio disponible en el bloque seleccionado.");
+            }
+
+            // 9. Generar código de cita
+            var codigoCita = await GenerarCodigoCitaAsync();
+            var preOrdenId = await GenerarPreOrdenIdAsync();
+            // 10. Crear cita
+            var cita = new Cita
+            {
+                CodigoCita = codigoCita,
+                PreOrdenId = preOrdenId,
+                ClienteId = dto.ClienteId,
+                VehiculoId = dto.VehiculoId,
+                TipoServicioId = dto.TipoServicioId,
+                FechaHoraInicio = dto.FechaHoraInicio,
+                FechaHoraFin = fechaHoraFin,
+                Estado = EstadoCita.Agendada,
+                TipoIngreso = TipoIngreso.Cita,
+                MotivoVisita = dto.MotivoVisita,
+                Observaciones = dto.Observaciones,
+                SucursalId = dto.SucursalId,
+                Activo = true,
+                UsuarioCreaId = usuarioId,
+                FechaCreacion = DateTime.UtcNow
+            };
+
+            context.Citas.Add(cita);
+
+            // 11. Reservar capacidad y bloque
+            if (capacidad != null)
+            {
+                capacidad.ReservarMinutos(tipoServicio.DuracionEstimadaMin);
+            }
+
+            if (bloque != null)
+            {
+                bloque.AgendarVehiculo();
+            }
+
+            await context.SaveChangesAsync();
+
+            // 12. Cargar navegaciones para el DTO
+            cita.Cliente = cliente;
+            cita.Vehiculo = vehiculo;
+            cita.TipoServicio = tipoServicio;
+
+            if (dto.SucursalId.HasValue)
+            {
+                cita.Sucursal = await context.Sucursales
+                    .FirstOrDefaultAsync(s => s.Id == dto.SucursalId);
+            }
+
+            return ApiResponse<CitaDTO>.ok(MapToDto(cita), "Cita agendada exitosamente.");
+        }
+
+        public async Task<ApiResponse<CitaDTO>> UpdateAsync(UpdateCitaDTO dto, string usuarioId)
+        {
+            var cita = await context.Citas
+            .Include(c => c.Cliente)
+            .Include(c => c.Vehiculo)
+                .ThenInclude(v => v.Marca)
+            .Include(c => c.Vehiculo)
+                .ThenInclude(v => v.Modelo)
+            .Include(c => c.TipoServicio)
+            .Include(c => c.Sucursal)
+            .FirstOrDefaultAsync(c => c.CitaId == dto.CitaId && c.Activo);
+
+            if (cita == null)
+                return ApiResponse<CitaDTO>.fail(404, null, "Cita no encontrada");
+            if (!cita.EstaActiva)
+                return ApiResponse<CitaDTO>.fail(400, null, "Solo pueden modificarse citas activas");
+
+            //validar fechas futuras
+            if (dto.FechaHoraInicio <= DateTime.Now)
+                return ApiResponse<CitaDTO>.fail(400, null, "la fecha de la cita debe ser futura");
+
+            //calcular nueva hora de fin
+            var nuevaFechaFin = dto.FechaHoraInicio.AddMinutes(cita.TipoServicio.DuracionEstimadaMin);
+
+            cita.FechaHoraInicio = dto.FechaHoraInicio;
+            cita.FechaHoraFin = nuevaFechaFin;
+            cita.MotivoVisita = dto.MotivoVisita;
+            cita.UsuarioModificaId = usuarioId;
+            cita.FechaModificacion = DateTime.UtcNow;
+
+            await context.SaveChangesAsync();
+            return ApiResponse<CitaDTO>.ok(MapToDto(cita), "cita actualiada exictosamente");
+        }
+        public async Task<ApiResponse<bool>> ConfirmarAsync(int citaId, string usuarioId)
+        {
+            var cita = await context.Citas
+            .FirstOrDefaultAsync(c => c.CitaId == citaId && c.Activo);
+
+            if (cita == null)
+                return ApiResponse<bool>.fail(404, null, "Cita no encontrada.");
+
+            if (cita.Estado != EstadoCita.Agendada)
+                return ApiResponse<bool>.fail(400, null, "Solo se pueden confirmar citas agendadas.");
+
+            cita.Confirmar();
+            cita.UsuarioModificaId = usuarioId;
+            cita.FechaModificacion = DateTime.UtcNow;
+
+            await context.SaveChangesAsync();
+
+            return ApiResponse<bool>.ok(true, "Cita confirmada exitosamente.");
+        }
+        public async Task<ApiResponse<bool>> CancelarAsync(CancelarCitaDTO dto, string usuarioId)
+        {
+            var cita = await context.Citas
+                .Include(c => c.TipoServicio)
+                .FirstOrDefaultAsync(c => c.CitaId == dto.CitaId && c.Activo);
+
+            if (cita == null)
+                return ApiResponse<bool>.fail(404, null, "Cita no encontrada.");
+
+            if (!cita.EstaActiva)
+                return ApiResponse<bool>.fail(400, null, "Solo se pueden cancelar citas activas.");
+
+            // Liberar capacidad
+            var capacidad = await context.CapacidadTaller
+                .FirstOrDefaultAsync(c => c.Fecha.Date == cita.FechaHoraInicio.Date &&
+                                         c.SucursalId == cita.SucursalId &&
+                                         c.Activo);
+
+            if (capacidad != null)
+            {
+                capacidad.LiberarMinutos(cita.TipoServicio.DuracionEstimadaMin);
+            }
+
+            // Liberar bloque (si aplica - buscar por hora)
+            var bloque = await context.BloquesHorario
+                .FirstOrDefaultAsync(b => b.Capacidad.Fecha.Date == cita.FechaHoraInicio.Date &&
+                                         b.Capacidad.SucursalId == cita.SucursalId &&
+                                         b.HoraInicio <= cita.FechaHoraInicio.TimeOfDay &&
+                                         b.HoraFin > cita.FechaHoraInicio.TimeOfDay &&
+                                         b.Activo);
+
+            if (bloque != null)
+            {
+                bloque.LiberarEspacio();
+            }
+
+            cita.Cancelar(dto.MotivoCancelacion);
+            cita.UsuarioModificaId = usuarioId;
+            cita.FechaModificacion = DateTime.UtcNow;
+
+            await context.SaveChangesAsync();
+
+            return ApiResponse<bool>.ok(true, "Cita cancelada exitosamente.");
+        }
+        public async Task<ApiResponse<bool>> MarcarNoShowAsync(int citaId, string usuarioId) {
+            var cita = await context.Citas
+          .Include(c => c.Cliente)
+          .Include(c => c.TipoServicio)
+          .FirstOrDefaultAsync(c => c.CitaId == citaId && c.Activo);
+
+            if (cita == null)
+                return ApiResponse<bool>.fail(404, null, "Cita no encontrada.");
+
+            if (!cita.EstaActiva)
+                return ApiResponse<bool>.fail(400, null, "Solo se pueden marcar no-show citas activas.");
+
+            // Incrementar contador de no-show del cliente
+            cita.Cliente.IncrementarNoShow();
+
+            // Liberar capacidad
+            var capacidad = await context.CapacidadTaller
+                .FirstOrDefaultAsync(c => c.Fecha.Date == cita.FechaHoraInicio.Date &&
+                                         c.SucursalId == cita.SucursalId &&
+                                         c.Activo);
+
+            if (capacidad != null)
+            {
+                capacidad.LiberarMinutos(cita.TipoServicio.DuracionEstimadaMin);
+            }
+
+            // Liberar bloque
+            var bloque = await context.BloquesHorario
+                .FirstOrDefaultAsync(b => b.Capacidad.Fecha.Date == cita.FechaHoraInicio.Date &&
+                                         b.Capacidad.SucursalId == cita.SucursalId &&
+                                         b.HoraInicio <= cita.FechaHoraInicio.TimeOfDay &&
+                                         b.HoraFin > cita.FechaHoraInicio.TimeOfDay &&
+                                         b.Activo);
+
+            if (bloque != null)
+            {
+                bloque.LiberarEspacio();
+            }
+
+            cita.MarcarNoShow();
+            cita.UsuarioModificaId = usuarioId;
+            cita.FechaModificacion = DateTime.UtcNow;
+
+            await context.SaveChangesAsync();
+
+            return ApiResponse<bool>.ok(true, $"No-show registrado. El cliente tiene {cita.Cliente.NoShowCount} inasistencias.");
+        }
+       public async Task<ApiResponse<bool>> IniciarAtencionAsync(int citaId, string usuarioId)
+        {
+            var cita = await context.Citas
+           .FirstOrDefaultAsync(c => c.CitaId == citaId && c.Activo);
+
+            if (cita == null)
+                return ApiResponse<bool>.fail(404, null, "Cita no encontrada.");
+
+            if (!cita.PuedeConvertirseEnOs)
+                return ApiResponse<bool>.fail(400, null, "La cita no está en estado válido para iniciar atención.");
+
+            cita.IniciarProceso();
+            cita.UsuarioModificaId = usuarioId;
+            cita.FechaModificacion = DateTime.UtcNow;
+
+            await context.SaveChangesAsync();
+
+            return ApiResponse<bool>.ok(true, "Atención iniciada. Puede crear la Orden de Servicio.");
+        
+        }
+        public async Task<ApiResponse<bool>> CompletarAsync(int citaId, string usuarioId)
+        {
+            var cita = await context.Citas
+        .FirstOrDefaultAsync(c => c.CitaId == citaId && c.Activo);
+
+            if (cita == null)
+                return ApiResponse<bool>.fail(404, null, "Cita no encontrada.");
+
+            // Validación agregada
+            if (cita.Estado != EstadoCita.EnProceso)
+                return ApiResponse<bool>.fail(400, null, "Solo se pueden completar citas en proceso.");
+
+            cita.Completar();
+            cita.UsuarioModificaId = usuarioId;
+            cita.FechaModificacion = DateTime.UtcNow;
+
+            await context.SaveChangesAsync();
+
+            return ApiResponse<bool>.ok(true, "Cita completada exitosamente.");
+        }
+        
+        #endregion
+
+        #region Helpers
+
+        private async Task<string> GenerarCodigoCitaAsync()
+        {
+            var fecha = DateTime.Now;
+            var prefijo = $"CIT-{fecha:yyyyMMdd}-";
+
+            var ultimaCita = await context.Citas
+                .Where(c => c.CodigoCita.StartsWith(prefijo))
+                .OrderByDescending(c => c.CodigoCita)
+                .FirstOrDefaultAsync();
+
+            int siguiente = 1;
+            if (ultimaCita != null)
+            {
+                var ultimoNumero = ultimaCita.CodigoCita.Replace(prefijo, "");
+                if (int.TryParse(ultimoNumero, out int numero))
+                {
+                    siguiente = numero + 1;
+                }
+            }
+
+            return $"{prefijo}{siguiente:D4}";
+        }
+        private async Task<string> GenerarPreOrdenIdAsync()
+        {
+            var fecha = DateTime.Now;
+            var prefijo = $"PRE-{fecha:yyyyMMdd}-";
+
+            var ultimaPreOrden = await context.Citas
+                .Where(c => c.PreOrdenId != null && c.PreOrdenId.StartsWith(prefijo))
+                .OrderByDescending(c => c.PreOrdenId)
+                .FirstOrDefaultAsync();
+
+            int siguiente = 1;
+            if (ultimaPreOrden != null)
+            {
+                var ultimoNumero = ultimaPreOrden.PreOrdenId!.Replace(prefijo, "");
+                if (int.TryParse(ultimoNumero, out int numero))
+                    siguiente = numero + 1;
+            }
+
+            return $"{prefijo}{siguiente:D4}";
+        }
+        private static CitaDTO MapToDto(Cita c)
+        {
+            return new CitaDTO
+            {
+                CitaId = c.CitaId,
+                CodigoCita = c.CodigoCita,
+                ClienteId = c.ClienteId,
+                VehiculoId = c.VehiculoId,
+                TipoServicioId = c.TipoServicioId,
+                FechaHoraInicio = c.FechaHoraInicio,
+                FechaHoraFin = c.FechaHoraFin,
+                Estado = c.Estado,
+                TipoIngreso = c.TipoIngreso,
+                MotivoVisita = c.MotivoVisita,
+                Observaciones = c.Observaciones,
+                MotivoCancelacion = c.MotivoCancelacion,
+                PreOrdenId = c.PreOrdenId,
+                SucursalId = c.SucursalId,
+                ClienteNombre = c.Cliente?.NombreCompleto ?? "",
+                ClienteTelefono = c.Cliente?.Telefono,
+                VehiculoDescripcion = c.Vehiculo?.DescripcionCompleta ?? "",
+                VehiculoPlaca = c.Vehiculo?.Placa,
+                TipoServicioNombre = c.TipoServicio?.Nombre ?? "",
+                SucursalNombre = c.Sucursal?.Nombre,
+                DuracionMinutos = (int)c.Duracion.TotalMinutes,
+                EstaActiva = c.EstaActiva,
+                PuedeConvertirseEnOs = c.PuedeConvertirseEnOs
+            };
+        }
+
+        public async Task<ApiResponse<List<CitaDTO>>> GetByRangoFechasAsync(DateTime fechaInicio, DateTime fechaFin, int? sucursalId = null)
+        {
+            var query = context.Citas
+            .Include(c => c.Cliente)
+            .Include(c => c.Vehiculo)
+                .ThenInclude(v => v.Marca)
+            .Include(c => c.Vehiculo)
+                .ThenInclude(v => v.Modelo)
+            .Include(c => c.TipoServicio)
+            .Include(c => c.Sucursal)
+            .AsNoTracking()
+            .Where(c => c.FechaHoraInicio.Date >= fechaInicio.Date &&
+                       c.FechaHoraInicio.Date <= fechaFin.Date &&
+                       c.Activo);
+
+            if (sucursalId.HasValue)
+                query = query.Where(c => c.SucursalId == sucursalId);
+
+            var citas = await query
+                .OrderBy(c => c.FechaHoraInicio)
+                .ToListAsync();
+
+            var dtos = citas.Select(MapToDto).ToList();
+
+            return ApiResponse<List<CitaDTO>>.ok(dtos, "Citas obtenidas.");
+        }
+
+        #endregion
+    }
+}
+//## Resumen de métodos:
+
+//| Método | Descripción |
+//| --------| -------------|
+//| `GetByIdAsync` | Obtener por ID |
+//| `GetByCodigoAsync` | Buscar por código (CIT-20260128-0001) |
+//| `GetByFechaAsync` | Citas de un día |
+//| `GetByRangoFechasAsync` | Citas de varios días (calendario) |
+//| `GetByClienteAsync` | Historial de citas del cliente |
+//| `GetByVehiculoAsync` | Historial de citas del vehículo |
+//| `GetByEstadoAsync` | Filtrar por estado |
+//| `GetActivasDelDiaAsync` | Citas pendientes de hoy |
+//| `AgendarAsync` | Crear nueva cita |
+//| `UpdateAsync` | Modificar cita |
+//| `ConfirmarAsync` | Confirmar cita agendada |
+//| `CancelarAsync` | Cancelar cita (libera capacidad) |
+//| `MarcarNoShowAsync` | Cliente no llegó (incrementa contador) |
+//| `IniciarAtencionAsync` | Cambiar a EnProceso |
+//| `CompletarAsync` | Marcar como completada |
+
+//---
+
+//## Flujo de estados:
+//```
+//Agendada → Confirmada → EnProceso → Completada
+//    ↓          ↓
+//    └──────────┴──→ Cancelada
+//    └──────────┴──→ NoShow
