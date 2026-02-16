@@ -1,9 +1,11 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using PremierFlow.Application.Common;
 using PremierFlow.Application.Dtos.Vehiculos;
 using PremierFlow.Application.Interfaces.Vehiculo;
 using PremierFlow.Domain.Entities;
 using PremierFlow.Domain.Enums;
+using PremierFlow.Infrastructure.Identity;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -13,10 +15,12 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
     public class VehiculoService : IVehiculoService
     {
         private readonly PremierFlowDbContext context;
+        private readonly UserManager<ApplicationUser> userManager;
 
-        public VehiculoService(PremierFlowDbContext context)
+        public VehiculoService(PremierFlowDbContext context, UserManager<ApplicationUser> userManager)
         {
             this.context = context;
+            this.userManager = userManager;
         }
         public async Task<ApiResponse<bool>> ActualizarKilometrajeAsync(int vehiculoId, int nuevoKm, string usuarioId)
         {
@@ -43,7 +47,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
 //EnTransito → EnAduana → EnBodega → EnExhibicion → Reservado → Vendido → Entregado
 //                ↓            ↓           ↓
 //              EnBodega EnBodega    EnExhibicion(si cancela reserva)
-        public async Task<ApiResponse<bool>> CambiarEstadoAsync(int vehiculoId, EstadoVehiculo nuevoEstado, string usuarioId)
+        public async Task<ApiResponse<bool>> CambiarEstadoAsync(int vehiculoId, EstadoVehiculo nuevoEstado, string usuarioId, int? clienteId = null)
         {
             var vehiculo = await context.Vehiculos
           .FirstOrDefaultAsync(v => v.VehiculoId == vehiculoId && v.Activo);
@@ -55,6 +59,43 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
             if (!EsTransicionValida(vehiculo.Estado, nuevoEstado))
                 return ApiResponse<bool>.fail(400, null,
                     $"No se puede cambiar de {vehiculo.Estado} a {nuevoEstado}.");
+
+            // Validar datos requeridos según el estado destino
+            var validacion = ValidarDatosParaTransicion(vehiculo, nuevoEstado);
+            if (validacion != null)
+                return ApiResponse<bool>.fail(400, null, validacion);
+
+            // Entrando a Reservado: establecer campos de reserva
+            if (nuevoEstado == EstadoVehiculo.Reservado)
+            {
+                vehiculo.ReservadoPorId = usuarioId;
+                vehiculo.FechaReserva = DateTime.UtcNow;
+                vehiculo.FechaLimiteReserva = DateTime.UtcNow.AddDays(10);
+                if (clienteId.HasValue)
+                {
+                    var clienteExiste = await context.Clientes.AnyAsync(c => c.ClienteId == clienteId && c.Activo);
+                    if (!clienteExiste)
+                        return ApiResponse<bool>.fail(400, null, "El cliente no existe.");
+                    vehiculo.ClienteId = clienteId;
+                }
+            }
+
+            // Saliendo de Reservado a EnExhibicion (cancelar): limpiar todo
+            if (vehiculo.Estado == EstadoVehiculo.Reservado && nuevoEstado == EstadoVehiculo.EnExhibicion)
+            {
+                vehiculo.ReservadoPorId = null;
+                vehiculo.FechaReserva = null;
+                vehiculo.FechaLimiteReserva = null;
+                vehiculo.ClienteId = null;
+            }
+
+            // Saliendo de Reservado a Vendido: limpiar reserva (cliente se mantiene para venta)
+            if (vehiculo.Estado == EstadoVehiculo.Reservado && nuevoEstado == EstadoVehiculo.Vendido)
+            {
+                vehiculo.ReservadoPorId = null;
+                vehiculo.FechaReserva = null;
+                vehiculo.FechaLimiteReserva = null;
+            }
 
             vehiculo.Estado = nuevoEstado;
             vehiculo.UsuarioModificaId = usuarioId;
@@ -152,6 +193,10 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
                 await context.Entry(vehiculo).Reference(v => v.Cliente).LoadAsync();
             if (vehiculo.VersionId.HasValue)
                 await context.Entry(vehiculo).Reference(v => v.Version).LoadAsync();
+            if (vehiculo.SucursalId.HasValue)
+                await context.Entry(vehiculo).Reference(v => v.Sucursal).LoadAsync();
+            if (vehiculo.UbicacionId.HasValue)
+                await context.Entry(vehiculo).Reference(v => v.Ubicacion).LoadAsync();
             return ApiResponse<VehiculoDTO>.ok(MapToDto(vehiculo), "Vehículo creado exitosamente.");
         }
 
@@ -167,8 +212,9 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
 
             // Validar que no tenga OS abiertas
             var tieneOsAbiertas = await context.OrdenesServicio
-                .Include(os => os.Estado)
-                .AnyAsync(os => os.VehiculoId == vehiculoId && !os.Estado.EsEstadoFinal);
+                .AnyAsync(os => os.VehiculoId == vehiculoId &&
+                          os.Estado.Codigo != EstadoOs.Estados.Cerrada &&
+                          os.Estado.Codigo != EstadoOs.Estados.Cancelada);
 
             if (tieneOsAbiertas)
                 return ApiResponse<bool>.fail(400, null, "No se puede eliminar, el vehículo tiene órdenes de servicio abiertas.");
@@ -200,6 +246,8 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
                 .Include(v => v.Marca)
                 .Include(v => v.Modelo)
                 .Include(v => v.Version)
+                .Include(v => v.Sucursal)
+                .Include(v => v.Ubicacion)
                 .AsNoTracking()
                 .Where(v => v.Activo)
                 .ToListAsync();
@@ -215,6 +263,8 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
                 .Include(v => v.Marca)
                 .Include(v => v.Modelo)
                 .Include(v => v.Version)
+                .Include(v => v.Sucursal)
+                .Include(v => v.Ubicacion)
                 .AsNoTracking()
                 .Where(v => v.ClienteId==clienteId && v.Activo)
                 .ToListAsync();
@@ -230,6 +280,8 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
                 .Include(v => v.Marca)
                 .Include(v => v.Modelo)
                 .Include(v => v.Version)
+                .Include(v => v.Sucursal)
+                .Include(v => v.Ubicacion)
                 .AsNoTracking()
                 .Where(v => v.Estado == estado && v.Activo)
                 .ToListAsync();
@@ -245,6 +297,8 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
             .Include(v => v.Marca)
             .Include(v => v.Modelo)
             .Include(v => v.Version)
+            .Include(v => v.Sucursal)
+            .Include(v => v.Ubicacion)
             .AsNoTracking()
             .FirstOrDefaultAsync(v => v.VehiculoId == vehiculoId && v.Activo);
 
@@ -261,6 +315,8 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
            .Include(v => v.Marca)
            .Include(v => v.Modelo)
            .Include(v => v.Version)
+           .Include(v => v.Sucursal)
+           .Include(v => v.Ubicacion)
            .AsNoTracking()
            .FirstOrDefaultAsync(v => v.Placa == placa && v.Activo);
 
@@ -277,6 +333,8 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
             .Include(v => v.Marca)
             .Include(v => v.Modelo)
             .Include(v => v.Version)
+            .Include(v => v.Sucursal)
+            .Include(v => v.Ubicacion)
             .AsNoTracking()
             .Where(v => v.SucursalId == sucursalId && v.Activo)
             .ToListAsync();
@@ -293,6 +351,8 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
             .Include(v => v.Marca)
             .Include(v => v.Modelo)
             .Include(v => v.Version)
+            .Include(v => v.Sucursal)
+            .Include(v => v.Ubicacion)
             .AsNoTracking()
             .FirstOrDefaultAsync(v => v.Vin == vin && v.Activo);
 
@@ -318,7 +378,15 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
             if (vehiculo == null)
                 return ApiResponse<VehiculoDetalleDTO>.fail(404, null, "Vehículo no encontrado.");
 
-            return ApiResponse<VehiculoDetalleDTO>.ok(MapToDetalleDto(vehiculo), "Vehículo obtenido.");
+            var dto = MapToDetalleDto(vehiculo);
+
+            if (!string.IsNullOrEmpty(dto.ReservadoPorId))
+            {
+                var user = await userManager.FindByIdAsync(dto.ReservadoPorId);
+                dto.ReservadoPorNombre = user?.NombreCompleto ?? "Usuario desconocido";
+            }
+
+            return ApiResponse<VehiculoDetalleDTO>.ok(dto, "Vehículo obtenido.");
         }
            
   
@@ -348,6 +416,8 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
                 .Include(v => v.Marca)
                 .Include(v => v.Modelo)
                 .Include(v => v.Version)
+                .Include(v => v.Sucursal)
+                .Include(v => v.Ubicacion)
                 .AsNoTracking()
                 .Where(v => v.Activo &&
                            (v.Vin.ToLower().Contains(termLower) ||
@@ -371,6 +441,8 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
                 .Include(v=> v.Marca)
                 .Include(v=> v.Modelo)
                 .Include(v=> v.Version)
+                .Include(v => v.Sucursal)
+                .Include(v => v.Ubicacion)
                 .FirstOrDefaultAsync(v => v.VehiculoId == dto.VehiculoId && v.Activo);
             if (vehiculo == null)
             {
@@ -387,19 +459,25 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
                     return ApiResponse<VehiculoDTO>.fail(400, null, "Ya existe un vehículo con esa placa.");
             }
 
-            // 4. Validar marca
-            var marcaExiste = await context.Marcas.AnyAsync(m => m.MarcaId == dto.MarcaId && m.Activo);
-            if (!marcaExiste)
-                return ApiResponse<VehiculoDTO>.fail(400, null, "La marca no existe o está inactiva.");
+            // 4. Validar marca (solo si cambió)
+            if (vehiculo.MarcaId != dto.MarcaId)
+            {
+                var marcaExiste = await context.Marcas.AnyAsync(m => m.MarcaId == dto.MarcaId && m.Activo);
+                if (!marcaExiste)
+                    return ApiResponse<VehiculoDTO>.fail(400, null, "La marca no existe o está inactiva.");
+            }
 
-            // 5. Validar modelo
-            var modeloExiste = await context.Modelos
-                .AnyAsync(m => m.ModeloId == dto.ModeloId && m.MarcaId == dto.MarcaId && m.Activo);
-            if (!modeloExiste)
-                return ApiResponse<VehiculoDTO>.fail(400, null, "El modelo no existe o no pertenece a la marca.");
+            // 5. Validar modelo (solo si cambió marca o modelo)
+            if (vehiculo.ModeloId != dto.ModeloId || vehiculo.MarcaId != dto.MarcaId)
+            {
+                var modeloExiste = await context.Modelos
+                    .AnyAsync(m => m.ModeloId == dto.ModeloId && m.MarcaId == dto.MarcaId && m.Activo);
+                if (!modeloExiste)
+                    return ApiResponse<VehiculoDTO>.fail(400, null, "El modelo no existe o no pertenece a la marca.");
+            }
 
-            // 6. Validar versión
-            if (dto.VersionId.HasValue)
+            // 6. Validar versión (solo si cambió)
+            if (dto.VersionId.HasValue && dto.VersionId != vehiculo.VersionId)
             {
                 var versionExiste = await context.Versiones
                     .AnyAsync(v => v.VersionId == dto.VersionId && v.ModeloId == dto.ModeloId && v.Activo);
@@ -446,8 +524,40 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
             // Recargar navegaciones
             await context.Entry(vehiculo).Reference(v => v.Marca).LoadAsync();
             await context.Entry(vehiculo).Reference(v => v.Modelo).LoadAsync();
+            if (vehiculo.SucursalId.HasValue)
+                await context.Entry(vehiculo).Reference(v => v.Sucursal).LoadAsync();
+            if (vehiculo.UbicacionId.HasValue)
+                await context.Entry(vehiculo).Reference(v => v.Ubicacion).LoadAsync();
 
             return ApiResponse<VehiculoDTO>.ok(MapToDto(vehiculo), "Vehículo actualizado exitosamente.");
+        }
+
+        public async Task<ApiResponse<int>> CancelarReservasVencidasAsync(string usuarioId)
+        {
+            var ahora = DateTime.UtcNow;
+            var vencidas = await context.Vehiculos
+                .Where(v => v.Activo
+                          && v.Estado == EstadoVehiculo.Reservado
+                          && v.FechaLimiteReserva.HasValue
+                          && v.FechaLimiteReserva.Value < ahora)
+                .ToListAsync();
+
+            if (vencidas.Count == 0)
+                return ApiResponse<int>.ok(0, "No hay reservas vencidas.");
+
+            foreach (var v in vencidas)
+            {
+                v.Estado = EstadoVehiculo.EnExhibicion;
+                v.ClienteId = null;
+                v.ReservadoPorId = null;
+                v.FechaReserva = null;
+                v.FechaLimiteReserva = null;
+                v.UsuarioModificaId = usuarioId;
+                v.FechaModificacion = ahora;
+            }
+
+            await context.SaveChangesAsync();
+            return ApiResponse<int>.ok(vencidas.Count, $"{vencidas.Count} reserva(s) vencida(s) cancelada(s).");
         }
 
         #region Helpers
@@ -484,6 +594,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
                 Transmision = v.Transmision,
                 Estado = v.Estado,
                 ClienteId = v.ClienteId,
+                PrecioLista = v.PrecioLista,
                 KilometrajeActual = v.KilometrajeActual,
                 GarantiaHasta = v.GarantiaHasta,
                 ClienteNombre = v.Cliente?.NombreCompleto,
@@ -494,7 +605,12 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
                 DescripcionCompleta = v.DescripcionCompleta,
                 EnGarantia = v.EnGarantia,
                 EstaVendido = v.EstaVendido,
-                DisponibleParaVenta = v.DisponibleParaVenta
+                DisponibleParaVenta = v.DisponibleParaVenta,
+                SucursalId = v.SucursalId,
+                UbicacionId = v.UbicacionId,
+                SucursalNombre = v.Sucursal?.Nombre,
+                UbicacionNombre = v.Ubicacion?.Nombre,
+                FechaLimiteReserva = v.FechaLimiteReserva
             };
         }
 
@@ -545,9 +661,55 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
                 EnGarantia = v.EnGarantia,
                 EstaVendido = v.EstaVendido,
                 DisponibleParaVenta = v.DisponibleParaVenta,
-                CantidadServicios = v.HistorialAts?.Count ?? 0
+                CantidadServicios = v.HistorialAts?.Count ?? 0,
+                ReservadoPorId = v.ReservadoPorId,
+                FechaReserva = v.FechaReserva,
+                FechaLimiteReserva = v.FechaLimiteReserva
             };
         }
+        private static string? ValidarDatosParaTransicion(Vehiculo vehiculo, EstadoVehiculo nuevoEstado)
+        {
+            var faltantes = new List<string>();
+
+            // Saliendo de EnAduana: validar datos de importación completos
+            if (vehiculo.Estado == EstadoVehiculo.EnAduana)
+            {
+                if (string.IsNullOrEmpty(vehiculo.NumeroImportacion)) faltantes.Add("Número de importación");
+                if (string.IsNullOrEmpty(vehiculo.NumeroPoliza)) faltantes.Add("Número de póliza");
+                if (!vehiculo.CostoImportacion.HasValue || vehiculo.CostoImportacion <= 0) faltantes.Add("Costo de importación");
+                if (!vehiculo.FechaIngresoPais.HasValue) faltantes.Add("Fecha de ingreso al país");
+                if (!vehiculo.FechaRecepcion.HasValue) faltantes.Add("Fecha de recepción");
+                if (!vehiculo.PrecioLista.HasValue || vehiculo.PrecioLista <= 0) faltantes.Add("Precio de lista");
+                if (!vehiculo.SucursalId.HasValue) faltantes.Add("Sucursal");
+            }
+
+            switch (nuevoEstado)
+            {
+                case EstadoVehiculo.EnBodega:
+                    // Solo validar estos si no vinieron ya del bloque de EnAduana
+                    if (vehiculo.Estado != EstadoVehiculo.EnAduana)
+                    {
+                        if (!vehiculo.SucursalId.HasValue) faltantes.Add("Sucursal");
+                        if (!vehiculo.FechaIngresoPais.HasValue) faltantes.Add("Fecha de ingreso al país");
+                        if (!vehiculo.FechaRecepcion.HasValue) faltantes.Add("Fecha de recepción");
+                    }
+                    break;
+
+                case EstadoVehiculo.EnExhibicion:
+                    if (!vehiculo.SucursalId.HasValue) faltantes.Add("Sucursal");
+                    if (!vehiculo.PrecioLista.HasValue || vehiculo.PrecioLista <= 0) faltantes.Add("Precio de lista");
+                    if (!vehiculo.GarantiaHasta.HasValue) faltantes.Add("Garantía hasta");
+                    if (string.IsNullOrEmpty(vehiculo.Color)) faltantes.Add("Color");
+                    if (!vehiculo.Transmision.HasValue) faltantes.Add("Transmisión");
+                    break;
+            }
+
+            if (faltantes.Count == 0)
+                return null;
+
+            return $"No se puede cambiar a {nuevoEstado}. Faltan datos requeridos: {string.Join(", ", faltantes)}.";
+        }
+
         private static bool EsTransicionValida(EstadoVehiculo actual, EstadoVehiculo nuevo)
         {
             var transicionesValidas = new Dictionary<EstadoVehiculo, EstadoVehiculo[]>

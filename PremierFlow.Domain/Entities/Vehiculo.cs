@@ -122,6 +122,26 @@ namespace PremierFlow.Domain.Entities
         public string? VendedorId { get; set; }
 
         #endregion
+
+        #region Reserva
+
+        /// <summary>
+        /// Usuario que realizó la reserva.
+        /// </summary>
+        public string? ReservadoPorId { get; set; }
+
+        /// <summary>
+        /// Fecha en que se realizó la reserva.
+        /// </summary>
+        public DateTime? FechaReserva { get; set; }
+
+        /// <summary>
+        /// Fecha límite para concretar la venta (10 días desde reserva).
+        /// </summary>
+        public DateTime? FechaLimiteReserva { get; set; }
+
+        #endregion
+
         #region Taller / Postventa
 
         /// <summary>
@@ -192,7 +212,14 @@ namespace PremierFlow.Domain.Entities
         /// </summary>
         public bool EnGarantia => GarantiaHasta.HasValue && GarantiaHasta.Value > DateTime.UtcNow;
 
-      
+        /// <summary>
+        /// Indica si la reserva ha expirado (pasó la fecha límite).
+        /// </summary>
+        public bool ReservaExpirada => Estado == EstadoVehiculo.Reservado &&
+                                        FechaLimiteReserva.HasValue &&
+                                        FechaLimiteReserva.Value < DateTime.UtcNow;
+
+
 
         /// <summary>
         /// Actualiza el kilometraje si el nuevo valor es mayor.

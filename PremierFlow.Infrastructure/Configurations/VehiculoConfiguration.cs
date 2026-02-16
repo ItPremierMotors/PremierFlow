@@ -140,6 +140,20 @@ public class VehiculoConfiguration : IEntityTypeConfiguration<Vehiculo>
 
             #endregion
 
+            #region Reserva
+
+            builder.Property(v => v.ReservadoPorId)
+                .HasColumnName("reservado_por_id")
+                .HasMaxLength(450);
+
+            builder.Property(v => v.FechaReserva)
+                .HasColumnName("fecha_reserva");
+
+            builder.Property(v => v.FechaLimiteReserva)
+                .HasColumnName("fecha_limite_reserva");
+
+            #endregion
+
             #region Taller / Postventa
 
             builder.Property(v => v.KilometrajeActual)
@@ -249,6 +263,7 @@ public class VehiculoConfiguration : IEntityTypeConfiguration<Vehiculo>
             builder.Ignore(e => e.EstaVendido);
             builder.Ignore(e => e.DisponibleParaVenta);
             builder.Ignore(e => e.EnGarantia);
+            builder.Ignore(e => e.ReservaExpirada);
         }
     }
 

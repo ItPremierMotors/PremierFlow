@@ -13,16 +13,24 @@ namespace PremierFlow.Application.Dtos.Vehiculos
             public int MarcaId { get; set; }
             public int ModeloId { get; set; }
             public int? VersionId { get; set; }
+           #region Estado y Ubicación
+            public EstadoVehiculo Estado { get; set; }
+            public int? UbicacionId { get; set; }
+            public int? SucursalId { get; set; }
+         #endregion
             public int Anio { get; set; }
             public string? Color { get; set; }
             public TipoCombustible TipoCombustible { get; set; }
             public TipoTransmision? Transmision { get; set; }
-            public EstadoVehiculo Estado { get; set; }
+           
             public int? ClienteId { get; set; }
+            public decimal? PrecioLista { get; set; }
             public int KilometrajeActual { get; set; }
             public DateTime? GarantiaHasta { get; set; }
 
             // Extras para UI
+            public string? UbicacionNombre { get; set; }
+            public string? SucursalNombre { get; set; }
             public string? ClienteNombre { get; set; }
             public string MarcaNombre { get; set; } = null!;
             public string ModeloNombre { get; set; } = null!;
@@ -32,6 +40,7 @@ namespace PremierFlow.Application.Dtos.Vehiculos
             public bool EnGarantia { get; set; }
             public bool EstaVendido { get; set; }
             public bool DisponibleParaVenta { get; set; }
+            public DateTime? FechaLimiteReserva { get; set; }
     }
 
     public class VehiculoDetalleDTO
@@ -102,6 +111,10 @@ namespace PremierFlow.Application.Dtos.Vehiculos
         public bool EstaVendido { get; set; }
         public bool DisponibleParaVenta { get; set; }
         public int CantidadServicios { get; set; }
+        public string? ReservadoPorId { get; set; }
+        public string? ReservadoPorNombre { get; set; }
+        public DateTime? FechaReserva { get; set; }
+        public DateTime? FechaLimiteReserva { get; set; }
         #endregion
     }
     public class CreateVehiculoDTO

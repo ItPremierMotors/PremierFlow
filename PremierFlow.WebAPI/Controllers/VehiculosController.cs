@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using PremierFlow.Application.Dtos.Vehiculos;
 using PremierFlow.Application.Interfaces.Vehiculo;
+using PremierFlow.Application.Common;
 using PremierFlow.Domain.Entities;
 using PremierFlow.Domain.Enums;
 using System.Security.Claims;
@@ -149,14 +150,31 @@ namespace PremierFlow.WebAPI.Controllers
         }
 
         [HttpPatch("CambiarEstado/{vehiculoId}")]
-        public async Task<IActionResult> CambiarEstado(int vehiculoId, [FromBody] EstadoVehiculo nuevoEstado)
+        public async Task<IActionResult> CambiarEstado(int vehiculoId, [FromBody] CambiarEstadoDTO dto)
         {
             var UserFromToken = User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(UserFromToken))
             {
                 return Unauthorized(new { Messaje = "Usuario no autenticado. " });
             }
-            var result = await _vehiculoService.CambiarEstadoAsync(vehiculoId, nuevoEstado, UserFromToken);
+
+            // Solo "JefeVentas" puede reservar
+            if (dto.NuevoEstado == EstadoVehiculo.Reservado && !User.IsInRole("JefeVentas"))
+                return StatusCode(403, ApiResponse<bool>.fail(403, null, "Solo el rol 'Jefe Ventas' puede reservar vehículos."));
+
+            var result = await _vehiculoService.CambiarEstadoAsync(vehiculoId, dto.NuevoEstado, UserFromToken, dto.ClienteId);
+            return StatusCode(result.StatusCode, result);
+        }
+
+        [HttpPost("CancelarReservasVencidas")]
+        public async Task<IActionResult> CancelarReservasVencidas()
+        {
+            var UserFromToken = User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(UserFromToken))
+            {
+                return Unauthorized(new { Messaje = "Usuario no autenticado. " });
+            }
+            var result = await _vehiculoService.CancelarReservasVencidasAsync(UserFromToken);
             return StatusCode(result.StatusCode, result);
         }
     }
