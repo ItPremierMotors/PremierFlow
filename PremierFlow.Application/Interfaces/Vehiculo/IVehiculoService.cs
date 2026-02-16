@@ -23,7 +23,7 @@ namespace PremierFlow.Application.Interfaces.Vehiculo
         Task<ApiResponse<VehiculoDTO>> UpdateAsync(UpdateVehiculoDTO dto, string usuarioId);
         Task<ApiResponse<bool>> DeleteAsync(int vehiculoId, string usuarioId);
         Task<ApiResponse<bool>> ActualizarKilometrajeAsync(int vehiculoId, int nuevoKm, string usuarioId);
-        Task<ApiResponse<bool>> CambiarEstadoAsync(int vehiculoId, EstadoVehiculo nuevoEstado, string usuarioId, int? clienteId = null);
+        Task<ApiResponse<bool>> CambiarEstadoAsync(int vehiculoId, EstadoVehiculo nuevoEstado, string usuarioId, int? clienteId = null, string? vendedorId = null);
         Task<ApiResponse<int>> CancelarReservasVencidasAsync(string usuarioId);
     }
 }

@@ -25,6 +25,11 @@ namespace PremierFlow.Application.Dtos.Vehiculos
            
             public int? ClienteId { get; set; }
             public decimal? PrecioLista { get; set; }
+            public decimal? PrecioVenta { get; set; }
+            public DateTime? FechaVenta { get; set; }
+            public DateTime? FechaEntrega { get; set; }
+            public string? VendedorId { get; set; }
+            public string? VendedorNombre { get; set; }
             public int KilometrajeActual { get; set; }
             public DateTime? GarantiaHasta { get; set; }
 
@@ -85,6 +90,7 @@ namespace PremierFlow.Application.Dtos.Vehiculos
         public DateTime? FechaVenta { get; set; }
         public DateTime? FechaEntrega { get; set; }
         public string? VendedorId { get; set; }
+        public string? VendedorNombre { get; set; }
         #endregion
 
         #region Taller

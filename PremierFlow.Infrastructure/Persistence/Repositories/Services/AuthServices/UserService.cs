@@ -101,6 +101,42 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.AuthServi
             }
         }
 
+        public async Task<ApiResponse<List<UsersDTO>>> GetByDepartmentAsync(string departamento)
+        {
+            try
+            {
+                var users = await _userManager.Users
+                    .AsNoTracking()
+                    .Where(u => u.Activo && u.Departamento.ToLower() == departamento.ToLower())
+                    .ToListAsync();
+
+                var result = new List<UsersDTO>();
+
+                foreach (var user in users)
+                {
+                    var roles = await _userManager.GetRolesAsync(user);
+                    result.Add(new UsersDTO
+                    {
+                        Id = user.Id,
+                        NombreCompleto = user.NombreCompleto,
+                        Email = user.Email ?? "N/A",
+                        Activo = user.Activo,
+                        Departamento = user.Departamento,
+                        Cargo = user.Cargo,
+                        Roles = roles.ToList()
+                    });
+                }
+
+                return ApiResponse<List<UsersDTO>>.ok(result, "Usuarios obtenidos correctamente");
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse<List<UsersDTO>>.fail(500,
+                    new[] { ex.Message },
+                    "Error al obtener usuarios por departamento");
+            }
+        }
+
         #endregion
 
         #region WRITES

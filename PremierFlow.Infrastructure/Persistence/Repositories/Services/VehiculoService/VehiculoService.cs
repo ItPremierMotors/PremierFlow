@@ -22,6 +22,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
             this.context = context;
             this.userManager = userManager;
         }
+           
         public async Task<ApiResponse<bool>> ActualizarKilometrajeAsync(int vehiculoId, int nuevoKm, string usuarioId)
         {
             var vehiculo = await context.Vehiculos
@@ -47,7 +48,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
 //EnTransito → EnAduana → EnBodega → EnExhibicion → Reservado → Vendido → Entregado
 //                ↓            ↓           ↓
 //              EnBodega EnBodega    EnExhibicion(si cancela reserva)
-        public async Task<ApiResponse<bool>> CambiarEstadoAsync(int vehiculoId, EstadoVehiculo nuevoEstado, string usuarioId, int? clienteId = null)
+        public async Task<ApiResponse<bool>> CambiarEstadoAsync(int vehiculoId, EstadoVehiculo nuevoEstado, string usuarioId, int? clienteId = null, string? vendedorId = null)
         {
             var vehiculo = await context.Vehiculos
           .FirstOrDefaultAsync(v => v.VehiculoId == vehiculoId && v.Activo);
@@ -71,6 +72,8 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
                 vehiculo.ReservadoPorId = usuarioId;
                 vehiculo.FechaReserva = DateTime.UtcNow;
                 vehiculo.FechaLimiteReserva = DateTime.UtcNow.AddDays(10);
+                if (!string.IsNullOrEmpty(vendedorId))
+                    vehiculo.VendedorId = vendedorId;
                 if (clienteId.HasValue)
                 {
                     var clienteExiste = await context.Clientes.AnyAsync(c => c.ClienteId == clienteId && c.Activo);
@@ -87,6 +90,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
                 vehiculo.FechaReserva = null;
                 vehiculo.FechaLimiteReserva = null;
                 vehiculo.ClienteId = null;
+                vehiculo.VendedorId = null;
             }
 
             // Saliendo de Reservado a Vendido: limpiar reserva (cliente se mantiene para venta)
@@ -252,6 +256,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
                 .Where(v => v.Activo)
                 .ToListAsync();
             var vehiculoDtos = vehiculos.Select(MapToDto).ToList();
+            await ResolverNombresVendedor(vehiculoDtos);
             return ApiResponse<List<VehiculoDTO>>.ok(vehiculoDtos, "Vehículos obtenidos.");
 
         }
@@ -269,6 +274,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
                 .Where(v => v.ClienteId==clienteId && v.Activo)
                 .ToListAsync();
             var dtos = vehiculos.Select(MapToDto).ToList();
+            await ResolverNombresVendedor(dtos);
 
             return ApiResponse<List<VehiculoDTO>>.ok(dtos, "Vehículos obtenidos.");
         }
@@ -286,6 +292,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
                 .Where(v => v.Estado == estado && v.Activo)
                 .ToListAsync();
             var dtos = vehiculos.Select(MapToDto).ToList();
+            await ResolverNombresVendedor(dtos);
 
             return ApiResponse<List<VehiculoDTO>>.ok(dtos, "Vehículos obtenidos.");
         }
@@ -340,6 +347,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
             .ToListAsync();
 
             var dtos = vehiculos.Select(MapToDto).ToList();
+            await ResolverNombresVendedor(dtos);
 
             return ApiResponse<List<VehiculoDTO>>.ok(dtos, "Vehículos obtenidos.");
         }
@@ -386,6 +394,12 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
                 dto.ReservadoPorNombre = user?.NombreCompleto ?? "Usuario desconocido";
             }
 
+            if (!string.IsNullOrEmpty(dto.VendedorId))
+            {
+                var vendedor = await userManager.FindByIdAsync(dto.VendedorId);
+                dto.VendedorNombre = vendedor?.NombreCompleto ?? "Usuario desconocido";
+            }
+
             return ApiResponse<VehiculoDetalleDTO>.ok(dto, "Vehículo obtenido.");
         }
            
@@ -403,6 +417,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
            .ToListAsync();
 
             var dtos = vehiculos.Select(MapToDto).ToList();
+            await ResolverNombresVendedor(dtos);
 
             return ApiResponse<List<VehiculoDTO>>.ok(dtos, "Vehículos disponibles obtenidos.");
         }
@@ -429,6 +444,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
                 .ToListAsync();
 
             var dtos = vehiculos.Select(MapToDto).ToList();
+            await ResolverNombresVendedor(dtos);
 
             return ApiResponse<List<VehiculoDTO>>.ok(dtos, "Búsqueda completada.");
         }
@@ -562,6 +578,31 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
 
         #region Helpers
 
+        private async Task ResolverNombresVendedor(List<VehiculoDTO> dtos)
+        {
+            var vendedorIds = dtos
+                .Where(d => !string.IsNullOrEmpty(d.VendedorId))
+                .Select(d => d.VendedorId!)
+                .Distinct()
+                .ToList();
+
+            if (vendedorIds.Count == 0) return;
+
+            var vendedores = await userManager.Users
+                .AsNoTracking()
+                .Where(u => vendedorIds.Contains(u.Id))
+                .Select(u => new { u.Id, u.NombreCompleto })
+                .ToListAsync();
+
+            var dict = vendedores.ToDictionary(v => v.Id, v => v.NombreCompleto);
+
+            foreach (var dto in dtos)
+            {
+                if (!string.IsNullOrEmpty(dto.VendedorId) && dict.TryGetValue(dto.VendedorId, out var nombre))
+                    dto.VendedorNombre = nombre;
+            }
+        }
+
         private async Task<bool> VinExiste(string vin, int? excludeId = null)
         {
             return await context.Vehiculos
@@ -595,6 +636,10 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
                 Estado = v.Estado,
                 ClienteId = v.ClienteId,
                 PrecioLista = v.PrecioLista,
+                PrecioVenta = v.PrecioVenta,
+                FechaVenta = v.FechaVenta,
+                FechaEntrega = v.FechaEntrega,
+                VendedorId = v.VendedorId,
                 KilometrajeActual = v.KilometrajeActual,
                 GarantiaHasta = v.GarantiaHasta,
                 ClienteNombre = v.Cliente?.NombreCompleto,
@@ -686,12 +731,11 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
             switch (nuevoEstado)
             {
                 case EstadoVehiculo.EnBodega:
-                    // Solo validar estos si no vinieron ya del bloque de EnAduana
                     if (vehiculo.Estado != EstadoVehiculo.EnAduana)
                     {
                         if (!vehiculo.SucursalId.HasValue) faltantes.Add("Sucursal");
-                        if (!vehiculo.FechaIngresoPais.HasValue) faltantes.Add("Fecha de ingreso al país");
                         if (!vehiculo.FechaRecepcion.HasValue) faltantes.Add("Fecha de recepción");
+                        if (!vehiculo.PrecioLista.HasValue || vehiculo.PrecioLista <= 0) faltantes.Add("Precio de lista");
                     }
                     break;
 
@@ -701,6 +745,20 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
                     if (!vehiculo.GarantiaHasta.HasValue) faltantes.Add("Garantía hasta");
                     if (string.IsNullOrEmpty(vehiculo.Color)) faltantes.Add("Color");
                     if (!vehiculo.Transmision.HasValue) faltantes.Add("Transmisión");
+                    break;
+
+                case EstadoVehiculo.Vendido:
+                    if (!vehiculo.ClienteId.HasValue) faltantes.Add("Cliente");
+                    if (!vehiculo.PrecioVenta.HasValue || vehiculo.PrecioVenta <= 0) faltantes.Add("Precio de venta");
+                    if (!vehiculo.FechaVenta.HasValue) faltantes.Add("Fecha de venta");
+                    if (string.IsNullOrEmpty(vehiculo.VendedorId)) faltantes.Add("Vendedor");
+                    break;
+
+                case EstadoVehiculo.Entregado:
+                    if (!vehiculo.FechaEntrega.HasValue) faltantes.Add("Fecha de entrega");
+                    if (string.IsNullOrEmpty(vehiculo.Placa)) faltantes.Add("Placa");
+                    if (vehiculo.KilometrajeActual <= 0) faltantes.Add("Kilometraje actual");
+                    if (!vehiculo.FechaPrimeraMatricula.HasValue) faltantes.Add("Fecha de primera matrícula");
                     break;
             }
 

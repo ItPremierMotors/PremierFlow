@@ -11,6 +11,7 @@ namespace PremierFlow.Application.Interfaces.Auth
         //READS
         Task<ApiResponse<List<UsersDTO>>> GetAllAsync();
         Task<ApiResponse<UsersDTO?>>? GetByIdAsync(String id); // Returns null if user not found
+        Task<ApiResponse<List<UsersDTO>>> GetByDepartmentAsync(string departamento);
 
         //WRITES
         Task<ApiResponse<String>> CreateAsync(CreateUserRequest request);

@@ -103,6 +103,14 @@ namespace PremierFlow.WebAPI.Controllers
         }
 
         [Authorize]
+        [HttpGet("GetByDepartment/{departamento}")]
+        public async Task<ActionResult<ApiResponse<List<UsersDTO>>>> GetByDepartment(string departamento)
+        {
+            var result = await userService.GetByDepartmentAsync(departamento);
+            return StatusCode(result.StatusCode, result);
+        }
+
+        [Authorize]
         [HttpGet("GetUserById/{id}")]
         public async Task<ActionResult<ApiResponse<UsersDTO?>>> GetById(string id)
         {
