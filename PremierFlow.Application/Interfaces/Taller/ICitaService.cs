@@ -28,5 +28,6 @@ namespace PremierFlow.Application.Interfaces.Taller
         Task<ApiResponse<bool>> MarcarNoShowAsync(int citaId, string usuarioId);
         Task<ApiResponse<bool>> IniciarAtencionAsync(int citaId, string usuarioId);
         Task<ApiResponse<bool>> CompletarAsync(int citaId, string usuarioId);
+        Task<ApiResponse<CitaDTO>> TransferirAsync(TransferirCitaDTO dto, string usuarioId);
     }
 }

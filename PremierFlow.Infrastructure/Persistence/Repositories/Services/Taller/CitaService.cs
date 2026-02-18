@@ -472,12 +472,12 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
         public async Task<ApiResponse<bool>> CompletarAsync(int citaId, string usuarioId)
         {
             var cita = await context.Citas
-        .FirstOrDefaultAsync(c => c.CitaId == citaId && c.Activo);
+                .Include(c => c.TipoServicio)
+                .FirstOrDefaultAsync(c => c.CitaId == citaId && c.Activo);
 
             if (cita == null)
                 return ApiResponse<bool>.fail(404, null, "Cita no encontrada.");
 
-            // Validación agregada
             if (cita.Estado != EstadoCita.EnProceso)
                 return ApiResponse<bool>.fail(400, null, "Solo se pueden completar citas en proceso.");
 
@@ -485,11 +485,126 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             cita.UsuarioModificaId = usuarioId;
             cita.FechaModificacion = DateTime.UtcNow;
 
+            // Registrar minutos trabajados en la capacidad del día
+            var capacidad = await context.CapacidadTaller
+                .FirstOrDefaultAsync(c => c.Fecha.Date == cita.FechaHoraInicio.Date &&
+                                         c.SucursalId == cita.SucursalId &&
+                                         c.Activo);
+            if (capacidad != null)
+            {
+                var minutosReales = cita.TipoServicio.DuracionEstimadaMin;
+                capacidad.RegistrarTiempoTrabajado(minutosReales);
+            }
+
             await context.SaveChangesAsync();
 
             return ApiResponse<bool>.ok(true, "Cita completada exitosamente.");
         }
-        
+
+        public async Task<ApiResponse<CitaDTO>> TransferirAsync(TransferirCitaDTO dto, string usuarioId)
+        {
+            // 1. Cargar la cita original con sus relaciones
+            var cita = await context.Citas
+                .Include(c => c.Cliente)
+                .Include(c => c.Vehiculo)
+                    .ThenInclude(v => v.Marca)
+                .Include(c => c.Vehiculo)
+                    .ThenInclude(v => v.Modelo)
+                .Include(c => c.TipoServicio)
+                .Include(c => c.Sucursal)
+                .FirstOrDefaultAsync(c => c.CitaId == dto.CitaId && c.Activo);
+
+            if (cita == null)
+                return ApiResponse<CitaDTO>.fail(404, null, "Cita no encontrada.");
+
+            if (cita.Estado != EstadoCita.EnProceso)
+                return ApiResponse<CitaDTO>.fail(400, null, "Solo se pueden transferir citas en proceso.");
+
+            var duracionTotal = cita.TipoServicio.DuracionEstimadaMin;
+
+            if (dto.MinutosTrabajadosHoy <= 0)
+                return ApiResponse<CitaDTO>.fail(400, null, "Los minutos trabajados deben ser mayor a 0.");
+
+            if (dto.MinutosTrabajadosHoy >= duracionTotal)
+                return ApiResponse<CitaDTO>.fail(400, null, "Si se trabajaron todos los minutos, use Completar en vez de Transferir.");
+
+            var minutosRestantes = duracionTotal - dto.MinutosTrabajadosHoy;
+
+            // 2. Ajustar capacidad de HOY
+            var capacidadHoy = await context.CapacidadTaller
+                .FirstOrDefaultAsync(c => c.Fecha.Date == cita.FechaHoraInicio.Date &&
+                                         c.SucursalId == cita.SucursalId &&
+                                         c.Activo);
+
+            if (capacidadHoy != null)
+            {
+                // Registrar lo realmente trabajado hoy
+                capacidadHoy.RegistrarTiempoTrabajado(dto.MinutosTrabajadosHoy);
+                // Liberar los minutos que NO se trabajaron (estaban reservados pero no se usaron)
+                capacidadHoy.LiberarMinutos(minutosRestantes);
+            }
+
+            // 3. Completar la cita original como transferida
+            cita.Transferir(dto.MinutosTrabajadosHoy);
+            cita.Observaciones = (cita.Observaciones ?? "") +
+                $"\n[Transferida] {dto.MinutosTrabajadosHoy} min trabajados, {minutosRestantes} min pendientes.";
+            cita.UsuarioModificaId = usuarioId;
+            cita.FechaModificacion = DateTime.UtcNow;
+
+            // 4. Crear nueva cita para mañana
+            var manana = DateTime.UtcNow.Date.AddDays(1);
+            var horaInicio = new DateTime(manana.Year, manana.Month, manana.Day, 8, 0, 0); // 8:00 AM
+            var horaFin = horaInicio.AddMinutes(minutosRestantes);
+
+            var codigoCita = await GenerarCodigoCitaAsync();
+            var preOrdenId = await GenerarPreOrdenIdAsync();
+
+            var nuevaCita = new Cita
+            {
+                CodigoCita = codigoCita,
+                PreOrdenId = preOrdenId,
+                ClienteId = cita.ClienteId,
+                VehiculoId = cita.VehiculoId,
+                TipoServicioId = cita.TipoServicioId,
+                FechaHoraInicio = horaInicio,
+                FechaHoraFin = horaFin,
+                Estado = EstadoCita.EnProceso, // Ya está en proceso, el vehículo ya está en taller
+                TipoIngreso = cita.TipoIngreso,
+                MotivoVisita = cita.MotivoVisita,
+                Observaciones = $"[Continuación de {cita.CodigoCita}] {minutosRestantes} min pendientes.",
+                SucursalId = cita.SucursalId,
+                CitaOrigenId = cita.CitaId,
+                Activo = true,
+                UsuarioCreaId = usuarioId,
+                FechaCreacion = DateTime.UtcNow
+            };
+
+            context.Citas.Add(nuevaCita);
+
+            // 5. Reservar en capacidad de mañana (forzado — el vehículo ya está en taller)
+            var capacidadManana = await context.CapacidadTaller
+                .FirstOrDefaultAsync(c => c.Fecha.Date == manana &&
+                                         c.SucursalId == cita.SucursalId &&
+                                         c.Activo);
+
+            if (capacidadManana != null)
+            {
+                // Forzar reserva sin validar agendamiento ni capacidad
+                capacidadManana.MinutosReservados += minutosRestantes;
+            }
+
+            await context.SaveChangesAsync();
+
+            // Cargar navegaciones para el DTO de la nueva cita
+            nuevaCita.Cliente = cita.Cliente;
+            nuevaCita.Vehiculo = cita.Vehiculo;
+            nuevaCita.TipoServicio = cita.TipoServicio;
+            nuevaCita.Sucursal = cita.Sucursal;
+
+            return ApiResponse<CitaDTO>.ok(MapToDto(nuevaCita),
+                $"Cita transferida. {dto.MinutosTrabajadosHoy} min registrados hoy, {minutosRestantes} min para mañana.");
+        }
+
         #endregion
 
         #region Helpers
@@ -561,6 +676,9 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 TipoServicioNombre = c.TipoServicio?.Nombre ?? "",
                 SucursalNombre = c.Sucursal?.Nombre,
                 DuracionMinutos = (int)c.Duracion.TotalMinutes,
+                MinutosTrabajados = c.MinutosTrabajados,
+                CitaOrigenId = c.CitaOrigenId,
+                EsTransferencia = c.EsTransferencia,
                 EstaActiva = c.EstaActiva,
                 PuedeConvertirseEnOs = c.PuedeConvertirseEnOs
             };

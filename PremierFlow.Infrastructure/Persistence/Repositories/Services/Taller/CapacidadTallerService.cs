@@ -36,6 +36,10 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
 
         public async Task<ApiResponse<CapacidadTallerDTO>> CreateAsync(CreateCapacidadTallerDTO dto, string usuarioId)
         {
+            //0. No permitir crear capacidad para fechas pasadas
+            if (dto.Fecha.Date < DateTime.UtcNow.Date)
+                return ApiResponse<CapacidadTallerDTO>.fail(400, message: "No se puede crear capacidad para fechas anteriores a hoy.");
+
             //1. Validar si ya existe una capacidad para la misma fecha, turno y sucursal
             var existe=await context.CapacidadTaller
                 .AnyAsync(CapacidadTaller=> CapacidadTaller.Fecha.Date == dto.Fecha.Date 
@@ -99,6 +103,10 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
 
         public async Task<ApiResponse<List<CapacidadTallerDTO>>> GenerarCapacidadSemanalAsync(DateTime fechaInicio, CreateCapacidadTallerDTO plantilla, string usuarioId)
         {
+            //No permitir generar semana para fechas pasadas
+            if (fechaInicio.Date < DateTime.UtcNow.Date)
+                return ApiResponse<List<CapacidadTallerDTO>>.fail(400, message: "No se puede generar capacidad para fechas anteriores a hoy.");
+
             var capacidades = new List<CapacidadTaller>();
             for (int i = 0; i < 7; i++)
             {

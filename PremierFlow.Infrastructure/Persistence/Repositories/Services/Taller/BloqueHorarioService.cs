@@ -40,6 +40,10 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             if (capacidad == null)
                 return ApiResponse<BloqueHorarioDTO>.fail(404, null, "Capacidad de taller no encontrada.");
 
+            // 1b. No permitir crear bloques para fechas pasadas
+            if (capacidad.Fecha.Date < DateTime.UtcNow.Date)
+                return ApiResponse<BloqueHorarioDTO>.fail(400, null, "No se pueden crear bloques para fechas anteriores a hoy.");
+
             // 2. Validar horario
             if (dto.HoraInicio >= dto.HoraFin)
                 return ApiResponse<BloqueHorarioDTO>.fail(400, null, "La hora de inicio debe ser menor a la hora de fin.");
@@ -109,6 +113,10 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
 
             if (capacidad == null)
                 return ApiResponse<List<BloqueHorarioDTO>>.fail(404, null, "Capacidad de taller no encontrada.");
+
+            // 1b. No permitir generar bloques para fechas pasadas
+            if (capacidad.Fecha.Date < DateTime.UtcNow.Date)
+                return ApiResponse<List<BloqueHorarioDTO>>.fail(400, null, "No se pueden generar bloques para fechas anteriores a hoy.");
 
             // 2. Validar que no existan bloques para esa capacidad
             var existenBloques = await context.BloquesHorario

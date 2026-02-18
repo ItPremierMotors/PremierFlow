@@ -43,14 +43,21 @@ namespace PremierFlow.Domain.Entities
         /// </summary>
         public string? PreOrdenId { get; set; }
         public int? SucursalId { get; set; }
+
+        // Transferencia
+        public int? MinutosTrabajados { get; set; }
+        public int? CitaOrigenId { get; set; }
+
         // Navegación
         public virtual Cliente Cliente { get; set; } = null!;
         public virtual Vehiculo Vehiculo { get; set; } = null!;
         public virtual TipoServicio TipoServicio { get; set; } = null!;
         public virtual OrdenServicio? OrdenServicio { get; set; }
         public virtual Sucursal? Sucursal { get; set; }
+        public virtual Cita? CitaOrigen { get; set; }
 
         // Métodos de dominio
+        public bool EsTransferencia => CitaOrigenId.HasValue;
         public TimeSpan Duracion => FechaHoraFin - FechaHoraInicio;
 
         public bool EstaActiva => Estado == EstadoCita.Agendada || Estado == EstadoCita.Confirmada;
@@ -94,6 +101,17 @@ namespace PremierFlow.Domain.Entities
         {
             if (Estado != EstadoCita.EnProceso)
                 throw new InvalidOperationException("Solo se pueden completar citas en proceso");
+            Estado = EstadoCita.Completada;
+        }
+
+        public void Transferir(int minutosTrabajados)
+        {
+            if (Estado != EstadoCita.EnProceso)
+                throw new InvalidOperationException("Solo se pueden transferir citas en proceso.");
+            if (minutosTrabajados <= 0)
+                throw new InvalidOperationException("Los minutos trabajados deben ser mayor a 0.");
+
+            MinutosTrabajados = minutosTrabajados;
             Estado = EstadoCita.Completada;
         }
     }

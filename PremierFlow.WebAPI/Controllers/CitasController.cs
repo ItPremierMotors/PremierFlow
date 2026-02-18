@@ -161,5 +161,17 @@ namespace PremierFlow.WebAPI.Controllers
             return StatusCode(result.StatusCode, result);
         }
 
+        [HttpPost("Transferir")]
+        public async Task<IActionResult> Transferir([FromBody] TransferirCitaDTO dto)
+        {
+            var userIdFromToken = User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrWhiteSpace(userIdFromToken))
+            {
+                return Unauthorized(new { Message = "Usuario no autenticado." });
+            }
+            var result = await _citaService.TransferirAsync(dto, userIdFromToken);
+            return StatusCode(result.StatusCode, result);
+        }
+
     }
 }

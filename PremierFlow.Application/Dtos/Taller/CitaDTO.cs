@@ -29,6 +29,9 @@ namespace PremierFlow.Application.Dtos.Taller
         public string TipoServicioNombre { get; set; } = null!;
         public string? SucursalNombre { get; set; }
         public int DuracionMinutos { get; set; }
+        public int? MinutosTrabajados { get; set; }
+        public int? CitaOrigenId { get; set; }
+        public bool EsTransferencia { get; set; }
         public string EstadoNombre => Estado.ToString();
         public bool EstaActiva { get; set; }
         public bool PuedeConvertirseEnOs { get; set; }
@@ -60,6 +63,12 @@ namespace PremierFlow.Application.Dtos.Taller
     {
         public int CitaId { get; set; }
         public string MotivoCancelacion { get; set; } = null!;
+    }
+
+    public class TransferirCitaDTO
+    {
+        public int CitaId { get; set; }
+        public int MinutosTrabajadosHoy { get; set; }
     }
 
 }
