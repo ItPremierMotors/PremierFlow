@@ -31,6 +31,8 @@ namespace PremierFlow.Application.Dtos.Taller
         public int DuracionMinutos { get; set; }
         public int? MinutosTrabajados { get; set; }
         public int? CitaOrigenId { get; set; }
+        public int? CapacidadId { get; set; }
+        public int? BloqueHorarioId { get; set; }
         public bool EsTransferencia { get; set; }
         public string EstadoNombre => Estado.ToString();
         public bool EstaActiva { get; set; }
@@ -46,10 +48,11 @@ namespace PremierFlow.Application.Dtos.Taller
         public int VehiculoId { get; set; }
         public int TipoServicioId { get; set; }
         public DateTime FechaHoraInicio { get; set; }
+        public TipoIngreso TipoIngreso { get; set; } = TipoIngreso.Cita;
         public string MotivoVisita { get; set; } = null!;
         public string? Observaciones { get; set; }
         public int? SucursalId { get; set; }
-        public int? BloqueHorarioId { get; set; }  // Opcional: si usa bloques
+        public int? BloqueHorarioId { get; set; }
     }
     public class UpdateCitaDTO
     {

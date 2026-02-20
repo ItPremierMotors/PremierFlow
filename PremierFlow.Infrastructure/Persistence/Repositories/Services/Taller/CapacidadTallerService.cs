@@ -267,6 +267,10 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             if(capacidad==null)
                 return ApiResponse<CapacidadTallerDTO>.fail(404, message: "Capacidad de taller no encontrada.");
 
+            if (capacidad.Fecha.Date < DateTime.Now.Date)
+                return ApiResponse<CapacidadTallerDTO>.fail(400, null,
+                    "No se puede editar la capacidad de una fecha que ya pasó.");
+
             //validar que no se reduza la capacidad por debajo de lo ya reservado o utilizado
             if (dto.MinutosDisponibles < capacidad.MinutosReservados)
                 return ApiResponse<CapacidadTallerDTO>.fail(400, null,

@@ -48,6 +48,10 @@ namespace PremierFlow.Domain.Entities
         public int? MinutosTrabajados { get; set; }
         public int? CitaOrigenId { get; set; }
 
+        // Relación con Capacidad/Bloque
+        public int? CapacidadId { get; set; }
+        public int? BloqueHorarioId { get; set; }
+
         // Navegación
         public virtual Cliente Cliente { get; set; } = null!;
         public virtual Vehiculo Vehiculo { get; set; } = null!;
@@ -55,6 +59,8 @@ namespace PremierFlow.Domain.Entities
         public virtual OrdenServicio? OrdenServicio { get; set; }
         public virtual Sucursal? Sucursal { get; set; }
         public virtual Cita? CitaOrigen { get; set; }
+        public virtual CapacidadTaller? Capacidad { get; set; }
+        public virtual BloqueHorario? BloqueHorario { get; set; }
 
         // Métodos de dominio
         public bool EsTransferencia => CitaOrigenId.HasValue;
@@ -112,7 +118,7 @@ namespace PremierFlow.Domain.Entities
                 throw new InvalidOperationException("Los minutos trabajados deben ser mayor a 0.");
 
             MinutosTrabajados = minutosTrabajados;
-            Estado = EstadoCita.Completada;
+            Estado = EstadoCita.Transferida;
         }
     }
 

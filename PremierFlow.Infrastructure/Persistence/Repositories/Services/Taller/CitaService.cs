@@ -209,6 +209,10 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             if (tipoServicio == null)
                 return ApiResponse<CitaDTO>.fail(404, null, "Tipo de servicio no encontrado.");
 
+            // 3.1 Validar compatibilidad servicio ↔ TipoIngreso
+            if (dto.TipoIngreso == TipoIngreso.WalkIn && !tipoServicio.PermiteWalkIn)
+                return ApiResponse<CitaDTO>.fail(400, null, "Este tipo de servicio no permite Walk-In.");
+
             // 4. Validar que no tenga cita activa para el mismo vehículo
             var tieneCitaActiva = await context.Citas
                 .AnyAsync(c => c.VehiculoId == dto.VehiculoId &&
@@ -240,7 +244,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                     return ApiResponse<CitaDTO>.fail(400, null, "No hay capacidad disponible para esta fecha.");
             }
 
-            // 8. Validar bloque horario (si se proporciona)
+            // 8. Validar bloque horario
             BloqueHorario? bloque = null;
             if (dto.BloqueHorarioId.HasValue)
             {
@@ -252,6 +256,21 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
 
                 if (!bloque.TieneEspacioDisponible)
                     return ApiResponse<CitaDTO>.fail(400, null, "No hay espacio disponible en el bloque seleccionado.");
+            }
+            else if (capacidad != null)
+            {
+                // Sin bloque seleccionado — verificar si hay bloques activos
+                var hayBloques = await context.BloquesHorario
+                    .AnyAsync(b => b.CapacidadId == capacidad.CapacidadId && b.Activo);
+
+                if (hayBloques)
+                    return ApiResponse<CitaDTO>.fail(400, null,
+                        "Debe seleccionar un bloque horario. Hay bloques configurados para esta fecha.");
+
+                // Sin bloques configurados y es Cita regular — no permitir
+                if (dto.TipoIngreso == TipoIngreso.Cita)
+                    return ApiResponse<CitaDTO>.fail(400, null,
+                        "No hay bloques horarios configurados para esta fecha. Configure bloques o use Walk-In.");
             }
 
             // 9. Generar código de cita
@@ -268,10 +287,12 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 FechaHoraInicio = dto.FechaHoraInicio,
                 FechaHoraFin = fechaHoraFin,
                 Estado = EstadoCita.Agendada,
-                TipoIngreso = TipoIngreso.Cita,
+                TipoIngreso = dto.TipoIngreso,
                 MotivoVisita = dto.MotivoVisita,
                 Observaciones = dto.Observaciones,
                 SucursalId = dto.SucursalId,
+                CapacidadId = capacidad?.CapacidadId,
+                BloqueHorarioId = bloque?.BloqueId,
                 Activo = true,
                 UsuarioCreaId = usuarioId,
                 FechaCreacion = DateTime.UtcNow
@@ -370,28 +391,20 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             if (!cita.EstaActiva)
                 return ApiResponse<bool>.fail(400, null, "Solo se pueden cancelar citas activas.");
 
-            // Liberar capacidad
-            var capacidad = await context.CapacidadTaller
-                .FirstOrDefaultAsync(c => c.Fecha.Date == cita.FechaHoraInicio.Date &&
-                                         c.SucursalId == cita.SucursalId &&
-                                         c.Activo);
-
-            if (capacidad != null)
+            // Liberar capacidad usando FK directa
+            if (cita.CapacidadId.HasValue)
             {
-                capacidad.LiberarMinutos(cita.TipoServicio.DuracionEstimadaMin);
+                var capacidad = await context.CapacidadTaller.FindAsync(cita.CapacidadId.Value);
+                if (capacidad != null)
+                    capacidad.LiberarMinutos(cita.TipoServicio.DuracionEstimadaMin);
             }
 
-            // Liberar bloque (si aplica - buscar por hora)
-            var bloque = await context.BloquesHorario
-                .FirstOrDefaultAsync(b => b.Capacidad.Fecha.Date == cita.FechaHoraInicio.Date &&
-                                         b.Capacidad.SucursalId == cita.SucursalId &&
-                                         b.HoraInicio <= cita.FechaHoraInicio.TimeOfDay &&
-                                         b.HoraFin > cita.FechaHoraInicio.TimeOfDay &&
-                                         b.Activo);
-
-            if (bloque != null)
+            // Liberar bloque usando FK directa
+            if (cita.BloqueHorarioId.HasValue)
             {
-                bloque.LiberarEspacio();
+                var bloque = await context.BloquesHorario.FindAsync(cita.BloqueHorarioId.Value);
+                if (bloque != null)
+                    bloque.LiberarEspacio();
             }
 
             cita.Cancelar(dto.MotivoCancelacion);
@@ -417,28 +430,20 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             // Incrementar contador de no-show del cliente
             cita.Cliente.IncrementarNoShow();
 
-            // Liberar capacidad
-            var capacidad = await context.CapacidadTaller
-                .FirstOrDefaultAsync(c => c.Fecha.Date == cita.FechaHoraInicio.Date &&
-                                         c.SucursalId == cita.SucursalId &&
-                                         c.Activo);
-
-            if (capacidad != null)
+            // Liberar capacidad usando FK directa
+            if (cita.CapacidadId.HasValue)
             {
-                capacidad.LiberarMinutos(cita.TipoServicio.DuracionEstimadaMin);
+                var capacidad = await context.CapacidadTaller.FindAsync(cita.CapacidadId.Value);
+                if (capacidad != null)
+                    capacidad.LiberarMinutos(cita.TipoServicio.DuracionEstimadaMin);
             }
 
-            // Liberar bloque
-            var bloque = await context.BloquesHorario
-                .FirstOrDefaultAsync(b => b.Capacidad.Fecha.Date == cita.FechaHoraInicio.Date &&
-                                         b.Capacidad.SucursalId == cita.SucursalId &&
-                                         b.HoraInicio <= cita.FechaHoraInicio.TimeOfDay &&
-                                         b.HoraFin > cita.FechaHoraInicio.TimeOfDay &&
-                                         b.Activo);
-
-            if (bloque != null)
+            // Liberar bloque usando FK directa
+            if (cita.BloqueHorarioId.HasValue)
             {
-                bloque.LiberarEspacio();
+                var bloque = await context.BloquesHorario.FindAsync(cita.BloqueHorarioId.Value);
+                if (bloque != null)
+                    bloque.LiberarEspacio();
             }
 
             cita.MarcarNoShow();
@@ -485,15 +490,12 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             cita.UsuarioModificaId = usuarioId;
             cita.FechaModificacion = DateTime.UtcNow;
 
-            // Registrar minutos trabajados en la capacidad del día
-            var capacidad = await context.CapacidadTaller
-                .FirstOrDefaultAsync(c => c.Fecha.Date == cita.FechaHoraInicio.Date &&
-                                         c.SucursalId == cita.SucursalId &&
-                                         c.Activo);
-            if (capacidad != null)
+            // Registrar minutos trabajados usando FK directa
+            if (cita.CapacidadId.HasValue)
             {
-                var minutosReales = cita.TipoServicio.DuracionEstimadaMin;
-                capacidad.RegistrarTiempoTrabajado(minutosReales);
+                var capacidad = await context.CapacidadTaller.FindAsync(cita.CapacidadId.Value);
+                if (capacidad != null)
+                    capacidad.RegistrarTiempoTrabajado(cita.TipoServicio.DuracionEstimadaMin);
             }
 
             await context.SaveChangesAsync();
@@ -530,18 +532,15 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
 
             var minutosRestantes = duracionTotal - dto.MinutosTrabajadosHoy;
 
-            // 2. Ajustar capacidad de HOY
-            var capacidadHoy = await context.CapacidadTaller
-                .FirstOrDefaultAsync(c => c.Fecha.Date == cita.FechaHoraInicio.Date &&
-                                         c.SucursalId == cita.SucursalId &&
-                                         c.Activo);
-
-            if (capacidadHoy != null)
+            // 2. Ajustar capacidad de HOY usando FK directa
+            if (cita.CapacidadId.HasValue)
             {
-                // Registrar lo realmente trabajado hoy
-                capacidadHoy.RegistrarTiempoTrabajado(dto.MinutosTrabajadosHoy);
-                // Liberar los minutos que NO se trabajaron (estaban reservados pero no se usaron)
-                capacidadHoy.LiberarMinutos(minutosRestantes);
+                var capacidadHoy = await context.CapacidadTaller.FindAsync(cita.CapacidadId.Value);
+                if (capacidadHoy != null)
+                {
+                    capacidadHoy.RegistrarTiempoTrabajado(dto.MinutosTrabajadosHoy);
+                    capacidadHoy.LiberarMinutos(minutosRestantes);
+                }
             }
 
             // 3. Completar la cita original como transferida
@@ -559,6 +558,12 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             var codigoCita = await GenerarCodigoCitaAsync();
             var preOrdenId = await GenerarPreOrdenIdAsync();
 
+            // 5. Buscar capacidad de mañana
+            var capacidadManana = await context.CapacidadTaller
+                .FirstOrDefaultAsync(c => c.Fecha.Date == manana &&
+                                         c.SucursalId == cita.SucursalId &&
+                                         c.Activo);
+
             var nuevaCita = new Cita
             {
                 CodigoCita = codigoCita,
@@ -568,12 +573,14 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 TipoServicioId = cita.TipoServicioId,
                 FechaHoraInicio = horaInicio,
                 FechaHoraFin = horaFin,
-                Estado = EstadoCita.EnProceso, // Ya está en proceso, el vehículo ya está en taller
+                Estado = EstadoCita.EnProceso,
                 TipoIngreso = cita.TipoIngreso,
                 MotivoVisita = cita.MotivoVisita,
                 Observaciones = $"[Continuación de {cita.CodigoCita}] {minutosRestantes} min pendientes.",
                 SucursalId = cita.SucursalId,
                 CitaOrigenId = cita.CitaId,
+                CapacidadId = capacidadManana?.CapacidadId,
+                BloqueHorarioId = null,
                 Activo = true,
                 UsuarioCreaId = usuarioId,
                 FechaCreacion = DateTime.UtcNow
@@ -581,15 +588,9 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
 
             context.Citas.Add(nuevaCita);
 
-            // 5. Reservar en capacidad de mañana (forzado — el vehículo ya está en taller)
-            var capacidadManana = await context.CapacidadTaller
-                .FirstOrDefaultAsync(c => c.Fecha.Date == manana &&
-                                         c.SucursalId == cita.SucursalId &&
-                                         c.Activo);
-
+            // Forzar reserva en capacidad de mañana (el vehículo ya está en taller)
             if (capacidadManana != null)
             {
-                // Forzar reserva sin validar agendamiento ni capacidad
                 capacidadManana.MinutosReservados += minutosRestantes;
             }
 
@@ -678,6 +679,8 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 DuracionMinutos = (int)c.Duracion.TotalMinutes,
                 MinutosTrabajados = c.MinutosTrabajados,
                 CitaOrigenId = c.CitaOrigenId,
+                CapacidadId = c.CapacidadId,
+                BloqueHorarioId = c.BloqueHorarioId,
                 EsTransferencia = c.EsTransferencia,
                 EstaActiva = c.EstaActiva,
                 PuedeConvertirseEnOs = c.PuedeConvertirseEnOs
