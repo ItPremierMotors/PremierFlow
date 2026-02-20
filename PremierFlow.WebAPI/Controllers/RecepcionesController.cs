@@ -83,5 +83,24 @@ namespace PremierFlow.WebAPI.Controllers
             var result = await _recepcionService.RegistrarFirmaAsync(dto, userIdFromToken);
             return StatusCode(result.StatusCode, result);
         }
+
+        [HttpGet("DatosCita/{citaId}")]
+        public async Task<IActionResult> GetDatosCita(int citaId)
+        {
+            var result = await _recepcionService.GetDatosCitaAsync(citaId);
+            return StatusCode(result.StatusCode, result);
+        }
+
+        [HttpPost("IniciarDesdeCita")]
+        public async Task<IActionResult> IniciarDesdeCita([FromBody] IniciarRecepcionDTO dto)
+        {
+            var userIdFromToken = User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdFromToken))
+            {
+                return Unauthorized("Usuario no esta Autenticado.");
+            }
+            var result = await _recepcionService.IniciarDesdeCitaAsync(dto, userIdFromToken);
+            return StatusCode(result.StatusCode, result);
+        }
     }
 }

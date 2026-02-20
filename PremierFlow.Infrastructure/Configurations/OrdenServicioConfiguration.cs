@@ -70,8 +70,18 @@ namespace PremierFlow.Infrastructure.Configurations
             builder.Property(e => e.FechaHoraRecepcion).HasColumnName("fecha_hora_recepcion");
             builder.Property(e => e.RecibidoPorId).HasColumnName("recibido_por_id").HasMaxLength(450).IsRequired();
             builder.Property(e => e.EntregadoPor).HasColumnName("entregado_por").HasMaxLength(100).IsRequired();
+
+            // Confirmación entrega
+            builder.Property(e => e.EsPropietarioQuienEntrega).HasColumnName("es_propietario_quien_entrega").HasDefaultValue(true);
+            builder.Property(e => e.RelacionEntregante).HasColumnName("relacion_entregante").HasMaxLength(100);
+            builder.Property(e => e.TelefonoEntregante).HasColumnName("telefono_entregante").HasMaxLength(20);
+
             builder.Property(e => e.EstadoCarroceria).HasColumnName("estado_carroceria").HasColumnType("nvarchar(2000)");
             builder.Property(e => e.AccesoriosRecibidos).HasColumnName("accesorios_recibidos").HasColumnType("nvarchar(2000)");
+
+            // Daños exteriores JSON
+            builder.Property(e => e.DanosExteriorJson).HasColumnName("danos_exterior_json").HasColumnType("nvarchar(max)");
+
             builder.Property(e => e.LlantaRepuesto).HasColumnName("llanta_repuesto").HasDefaultValue(false);
             builder.Property(e => e.Gato).HasColumnName("gato").HasDefaultValue(false);
             builder.Property(e => e.Triangulos).HasColumnName("triangulos").HasDefaultValue(false);
@@ -79,6 +89,29 @@ namespace PremierFlow.Infrastructure.Configurations
             builder.Property(e => e.Herramientas).HasColumnName("herramientas").HasDefaultValue(false);
             builder.Property(e => e.Radio).HasColumnName("radio").HasDefaultValue(false);
             builder.Property(e => e.Tapetes).HasColumnName("tapetes").HasDefaultValue(false);
+
+            // Checklist extendido - Exterior
+            builder.Property(e => e.Antena).HasColumnName("antena").HasDefaultValue(false);
+            builder.Property(e => e.EspejoIzquierdo).HasColumnName("espejo_izquierdo").HasDefaultValue(false);
+            builder.Property(e => e.EspejoDerecho).HasColumnName("espejo_derecho").HasDefaultValue(false);
+            builder.Property(e => e.Limpiaparabrisas).HasColumnName("limpiaparabrisas").HasDefaultValue(false);
+            builder.Property(e => e.PlacaDelantera).HasColumnName("placa_delantera").HasDefaultValue(false);
+            builder.Property(e => e.PlacaTrasera).HasColumnName("placa_trasera").HasDefaultValue(false);
+            builder.Property(e => e.TapaCombustible).HasColumnName("tapa_combustible").HasDefaultValue(false);
+
+            // Documentos/Extras
+            builder.Property(e => e.ManualVehiculo).HasColumnName("manual_vehiculo").HasDefaultValue(false);
+            builder.Property(e => e.SegundaLlave).HasColumnName("segunda_llave").HasDefaultValue(false);
+
+            // Inspección ruedas JSON
+            builder.Property(e => e.InspeccionRuedasJson).HasColumnName("inspeccion_ruedas_json").HasColumnType("nvarchar(max)");
+
+            // Motor
+            builder.Property(e => e.NivelAceiteOk).HasColumnName("nivel_aceite_ok").HasDefaultValue(false);
+            builder.Property(e => e.NivelRefrigeranteOk).HasColumnName("nivel_refrigerante_ok").HasDefaultValue(false);
+            builder.Property(e => e.NivelLiquidoFrenosOk).HasColumnName("nivel_liquido_frenos_ok").HasDefaultValue(false);
+            builder.Property(e => e.BateriaOk).HasColumnName("bateria_ok").HasDefaultValue(false);
+
             builder.Property(e => e.ObservacionesGenerales).HasColumnName("observaciones_generales").HasColumnType("nvarchar(2000)");
             builder.Property(e => e.FirmaClienteBase64).HasColumnName("firma_cliente_base64").HasColumnType("nvarchar(max)");
             builder.Property(e => e.ChecklistCompletado).HasColumnName("checklist_completado").HasDefaultValue(false);

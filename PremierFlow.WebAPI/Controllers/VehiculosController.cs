@@ -97,11 +97,6 @@ namespace PremierFlow.WebAPI.Controllers
         {
             var UserFromToken = User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             //validar enums
-            if (!Enum.IsDefined(typeof(TipoCombustible), dto.TipoCombustible))
-                return BadRequest("Tipo de combustible inválido");
-            if (dto.Transmision != null)
-                if (!Enum.IsDefined(typeof(TipoTransmision), dto.Transmision))
-                    return BadRequest("Tipo de transmisión inválido");
             if (!Enum.IsDefined(typeof(EstadoVehiculo), dto.Estado))
                 return BadRequest("Estado del vehículo inválido");
 
@@ -163,6 +158,18 @@ namespace PremierFlow.WebAPI.Controllers
                 return StatusCode(403, ApiResponse<bool>.fail(403, null, "Solo el rol 'Jefe Ventas' puede reservar vehículos."));
 
             var result = await _vehiculoService.CambiarEstadoAsync(vehiculoId, dto.NuevoEstado, UserFromToken, dto.ClienteId, dto.VendedorId);
+            return StatusCode(result.StatusCode, result);
+        }
+
+        [HttpPost("CrearLote")]
+        public async Task<IActionResult> CrearLote([FromBody] List<CreateVehiculoDTO> vehiculos)
+        {
+            var UserFromToken = User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(UserFromToken))
+            {
+                return Unauthorized(new { Messaje = "Usuario no autenticado. " });
+            }
+            var result = await _vehiculoService.CrearLoteAsync(vehiculos, UserFromToken);
             return StatusCode(result.StatusCode, result);
         }
 

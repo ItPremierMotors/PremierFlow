@@ -21,20 +21,20 @@ namespace PremierFlow.WebAPI.Controllers
             _citaService = citaService;
         }
         [HttpGet("GetAll")]
-        private async Task<IActionResult> GetAll()
+        public async Task<IActionResult> GetAll()
         {
             var result = await _citaService.GetAllAsync();
             return StatusCode(result.StatusCode, result);
         }
         [HttpGet("GetById/{citaId}")]
-        private async Task<IActionResult> GetById(int citaId)
+        public async Task<IActionResult> GetById(int citaId)
         {
             var result = await _citaService.GetByIdAsync(citaId);
             return StatusCode(result.StatusCode, result);
         }
 
         [HttpGet("GetByCodigo/{codigoCita}")]
-        private async Task<IActionResult> GetByCodigo(string codigoCita)
+        public async Task<IActionResult> GetByCodigo(string codigoCita)
         {
             if (string.IsNullOrWhiteSpace(codigoCita))
                 return BadRequest(new { Message = "El codigo no debe estar vacio. " });

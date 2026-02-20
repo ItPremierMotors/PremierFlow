@@ -20,9 +20,7 @@ namespace PremierFlow.Application.Dtos.Vehiculos
          #endregion
             public int Anio { get; set; }
             public string? Color { get; set; }
-            public TipoCombustible TipoCombustible { get; set; }
-            public TipoTransmision? Transmision { get; set; }
-           
+
             public int? ClienteId { get; set; }
             public decimal? PrecioLista { get; set; }
             public decimal? PrecioVenta { get; set; }
@@ -64,8 +62,6 @@ namespace PremierFlow.Application.Dtos.Vehiculos
         public int? VersionId { get; set; }
         public int Anio { get; set; }
         public string? Color { get; set; }
-        public TipoCombustible TipoCombustible { get; set; }
-        public TipoTransmision? Transmision { get; set; }
         #endregion
 
         #region Estado y Ubicación
@@ -138,8 +134,6 @@ namespace PremierFlow.Application.Dtos.Vehiculos
         public int? VersionId { get; set; }
         public int Anio { get; set; }
         public string? Color { get; set; }
-        public TipoCombustible TipoCombustible { get; set; } = TipoCombustible.Gasolina;
-        public TipoTransmision? Transmision { get; set; }
         #endregion
 
         #region Estado y Ubicación
@@ -189,8 +183,6 @@ namespace PremierFlow.Application.Dtos.Vehiculos
         public int? VersionId { get; set; }
         public int Anio { get; set; }
         public string? Color { get; set; }
-        public TipoCombustible TipoCombustible { get; set; }
-        public TipoTransmision? Transmision { get; set; }
         #endregion
 
         #region Estado y Ubicación

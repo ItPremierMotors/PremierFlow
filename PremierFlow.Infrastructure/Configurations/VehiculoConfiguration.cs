@@ -60,16 +60,6 @@ public class VehiculoConfiguration : IEntityTypeConfiguration<Vehiculo>
                 .HasColumnName("color")
                 .HasMaxLength(50);
 
-            builder.Property(v => v.TipoCombustible)
-                .HasColumnName("tipo_combustible")
-                .HasConversion<string>()
-                .HasMaxLength(20);
-
-            builder.Property(v => v.Transmision)
-                .HasColumnName("transmision")
-                .HasConversion<string>()
-                .HasMaxLength(20);
-
             #endregion
 
             #region Estado y Ubicación

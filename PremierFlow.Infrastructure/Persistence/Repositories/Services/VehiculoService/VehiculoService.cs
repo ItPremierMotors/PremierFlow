@@ -165,8 +165,6 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
                 VersionId = dto.VersionId,
                 Anio = dto.Anio,
                 Color = dto.Color,
-                TipoCombustible = dto.TipoCombustible,
-                Transmision = dto.Transmision,
                 Estado = dto.Estado,
                 UbicacionId = dto.UbicacionId,
                 SucursalId = dto.SucursalId,
@@ -511,8 +509,6 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
             vehiculo.VersionId = dto.VersionId;
             vehiculo.Anio = dto.Anio;
             vehiculo.Color = dto.Color;
-            vehiculo.TipoCombustible = dto.TipoCombustible;
-            vehiculo.Transmision = dto.Transmision;
             vehiculo.Estado = dto.Estado;
             vehiculo.UbicacionId = dto.UbicacionId;
             vehiculo.SucursalId = dto.SucursalId;
@@ -576,6 +572,147 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
             return ApiResponse<int>.ok(vencidas.Count, $"{vencidas.Count} reserva(s) vencida(s) cancelada(s).");
         }
 
+        public async Task<ApiResponse<ResultadoImportacionDTO>> CrearLoteAsync(List<CreateVehiculoDTO> vehiculos, string usuarioId)
+        {
+            if (vehiculos == null || vehiculos.Count == 0)
+                return ApiResponse<ResultadoImportacionDTO>.fail(400, null, "La lista de vehículos está vacía.");
+
+            var resultado = new ResultadoImportacionDTO { TotalFilas = vehiculos.Count };
+
+            // Pre-cargar sets para validación rápida
+            var existingVins = (await context.Vehiculos
+                .Where(v => v.Activo)
+                .Select(v => v.Vin.ToLower())
+                .ToListAsync())
+                .ToHashSet();
+
+            var existingPlacas = (await context.Vehiculos
+                .Where(v => v.Activo && v.Placa != null)
+                .Select(v => v.Placa!.ToLower())
+                .ToListAsync())
+                .ToHashSet();
+
+            var marcaIds = await context.Marcas.Where(m => m.Activo).Select(m => m.MarcaId).ToListAsync();
+            var marcaSet = new HashSet<int>(marcaIds);
+
+            var modeloIds = await context.Modelos.Where(m => m.Activo).Select(m => m.ModeloId).ToListAsync();
+            var modeloSet = new HashSet<int>(modeloIds);
+
+            var versionIds = await context.Versiones.Where(v => v.Activo).Select(v => v.VersionId).ToListAsync();
+            var versionSet = new HashSet<int>(versionIds);
+
+            var vinsEnLote = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var vehiculosParaInsertar = new List<(Vehiculo vehiculo, int index)>();
+
+            for (int i = 0; i < vehiculos.Count; i++)
+            {
+                var dto = vehiculos[i];
+                var fila = new FilaImportacionResultDTO { NumeroFila = i + 1, Vin = dto.Vin };
+                var errores = new List<string>();
+
+                // VIN
+                if (string.IsNullOrWhiteSpace(dto.Vin))
+                    errores.Add("VIN es obligatorio");
+                else if (dto.Vin.Length != 17)
+                    errores.Add($"VIN debe tener 17 caracteres (tiene {dto.Vin.Length})");
+                else if (existingVins.Contains(dto.Vin.ToLower()))
+                    errores.Add("VIN ya existe en la base de datos");
+                else if (vinsEnLote.Contains(dto.Vin))
+                    errores.Add("VIN duplicado en el lote");
+
+                // Placa
+                if (!string.IsNullOrWhiteSpace(dto.Placa) && existingPlacas.Contains(dto.Placa.ToLower()))
+                    errores.Add($"Placa '{dto.Placa}' ya existe");
+
+                // Marca
+                if (!marcaSet.Contains(dto.MarcaId))
+                    errores.Add("La marca no existe");
+
+                // Modelo
+                if (!modeloSet.Contains(dto.ModeloId))
+                    errores.Add("El modelo no existe");
+
+                // Version
+                if (dto.VersionId.HasValue && !versionSet.Contains(dto.VersionId.Value))
+                    errores.Add("La versión no existe");
+
+                // Año
+                if (dto.Anio < 1900 || dto.Anio > 2100)
+                    errores.Add("Año inválido");
+
+                if (errores.Count > 0)
+                {
+                    fila.Exitoso = false;
+                    fila.Error = string.Join("; ", errores);
+                    resultado.Detalle.Add(fila);
+                    resultado.Fallidos++;
+                    continue;
+                }
+
+                var vehiculo = new Vehiculo
+                {
+                    Vin = dto.Vin.ToUpperInvariant(),
+                    Placa = string.IsNullOrWhiteSpace(dto.Placa) ? null : dto.Placa.ToUpperInvariant(),
+                    NumeroMotor = dto.NumeroMotor,
+                    NumeroChasis = dto.NumeroChasis,
+                    MarcaId = dto.MarcaId,
+                    ModeloId = dto.ModeloId,
+                    VersionId = dto.VersionId,
+                    Anio = dto.Anio,
+                    Color = dto.Color,
+                    Estado = dto.Estado,
+                    UbicacionId = dto.UbicacionId,
+                    SucursalId = dto.SucursalId,
+                    Procedencia = dto.Procedencia,
+                    NumeroImportacion = dto.NumeroImportacion,
+                    NumeroPoliza = dto.NumeroPoliza,
+                    FechaIngresoPais = dto.FechaIngresoPais,
+                    FechaRecepcion = dto.FechaRecepcion,
+                    CostoImportacion = dto.CostoImportacion,
+                    ClienteId = dto.ClienteId,
+                    PrecioLista = dto.PrecioLista,
+                    KilometrajeActual = dto.KilometrajeActual,
+                    FechaPrimeraMatricula = dto.FechaPrimeraMatricula,
+                    GarantiaHasta = dto.GarantiaHasta,
+                    Observaciones = dto.Observaciones,
+                    FechaRegistro = DateTime.UtcNow,
+                    Activo = true,
+                    UsuarioCreaId = usuarioId,
+                    FechaCreacion = DateTime.UtcNow
+                };
+
+                vehiculosParaInsertar.Add((vehiculo, i));
+                vinsEnLote.Add(dto.Vin);
+                existingVins.Add(dto.Vin.ToLower());
+                if (!string.IsNullOrWhiteSpace(dto.Placa))
+                    existingPlacas.Add(dto.Placa.ToLower());
+
+                fila.Exitoso = true;
+                resultado.Detalle.Add(fila);
+            }
+
+            // Insertar todos los válidos
+            if (vehiculosParaInsertar.Count > 0)
+            {
+                foreach (var (v, _) in vehiculosParaInsertar)
+                    context.Vehiculos.Add(v);
+
+                await context.SaveChangesAsync();
+
+                // Actualizar IDs en resultado
+                foreach (var (v, idx) in vehiculosParaInsertar)
+                {
+                    var fila = resultado.Detalle.First(d => d.NumeroFila == idx + 1);
+                    fila.VehiculoId = v.VehiculoId;
+                }
+            }
+
+            resultado.Exitosos = vehiculosParaInsertar.Count;
+
+            var msg = $"Importación completada: {resultado.Exitosos} exitosos, {resultado.Fallidos} con errores de {resultado.TotalFilas} vehículos.";
+            return ApiResponse<ResultadoImportacionDTO>.ok(resultado, msg);
+        }
+
         #region Helpers
 
         private async Task ResolverNombresVendedor(List<VehiculoDTO> dtos)
@@ -631,8 +768,6 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
                 VersionId = v.VersionId,
                 Anio = v.Anio,
                 Color = v.Color,
-                TipoCombustible = v.TipoCombustible,
-                Transmision = v.Transmision,
                 Estado = v.Estado,
                 ClienteId = v.ClienteId,
                 PrecioLista = v.PrecioLista,
@@ -673,8 +808,6 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
                 VersionId = v.VersionId,
                 Anio = v.Anio,
                 Color = v.Color,
-                TipoCombustible = v.TipoCombustible,
-                Transmision = v.Transmision,
                 Estado = v.Estado,
                 UbicacionId = v.UbicacionId,
                 SucursalId = v.SucursalId,
@@ -744,7 +877,6 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
                     if (!vehiculo.PrecioLista.HasValue || vehiculo.PrecioLista <= 0) faltantes.Add("Precio de lista");
                     if (!vehiculo.GarantiaHasta.HasValue) faltantes.Add("Garantía hasta");
                     if (string.IsNullOrEmpty(vehiculo.Color)) faltantes.Add("Color");
-                    if (!vehiculo.Transmision.HasValue) faltantes.Add("Transmisión");
                     break;
 
                 case EstadoVehiculo.Vendido:
@@ -756,9 +888,6 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
 
                 case EstadoVehiculo.Entregado:
                     if (!vehiculo.FechaEntrega.HasValue) faltantes.Add("Fecha de entrega");
-                    if (string.IsNullOrEmpty(vehiculo.Placa)) faltantes.Add("Placa");
-                    if (vehiculo.KilometrajeActual <= 0) faltantes.Add("Kilometraje actual");
-                    if (!vehiculo.FechaPrimeraMatricula.HasValue) faltantes.Add("Fecha de primera matrícula");
                     break;
             }
 

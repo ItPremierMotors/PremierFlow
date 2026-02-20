@@ -111,7 +111,7 @@ namespace PremierFlow.Infrastructure.Configurations
             builder.Property(e => e.Codigo).HasColumnName("codigo").HasMaxLength(50).IsRequired();
             builder.Property(e => e.Nombre).HasColumnName("nombre").HasMaxLength(100).IsRequired();
             builder.Property(e => e.Motor).HasColumnName("motor").HasMaxLength(100);
-            builder.Property(e => e.Transmision).HasColumnName("transmision").HasMaxLength(50);
+            builder.Property(e => e.Transmision).HasColumnName("transmision").HasConversion<string>().HasMaxLength(20);
             builder.Property(e => e.Traccion).HasColumnName("traccion").HasConversion<string>().HasMaxLength(10);
             builder.Property(e => e.NumPuertas).HasColumnName("num_puertas");
             builder.Property(e => e.NumPasajeros).HasColumnName("num_pasajeros");

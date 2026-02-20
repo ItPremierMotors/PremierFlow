@@ -12,7 +12,7 @@ namespace PremierFlow.Application.Dtos.Catalogo
         public string Codigo { get; set; } = null!;
         public string Nombre { get; set; } = null!;
         public string? Motor { get; set; }
-        public string? Transmision { get; set; }
+        public TipoTransmision? Transmision { get; set; }
         public TipoTraccion? Traccion { get; set; }
         public int? NumPuertas { get; set; }
         public int? NumPasajeros { get; set; }
@@ -36,7 +36,7 @@ namespace PremierFlow.Application.Dtos.Catalogo
         public string Codigo { get; set; } = null!;
         public string Nombre { get; set; } = null!;
         public string? Motor { get; set; }
-        public string? Transmision { get; set; }
+        public TipoTransmision? Transmision { get; set; }
         public TipoTraccion? Traccion { get; set; }
         public int? NumPuertas { get; set; }
         public int? NumPasajeros { get; set; }
@@ -55,7 +55,7 @@ namespace PremierFlow.Application.Dtos.Catalogo
         public string Codigo { get; set; } = null!;
         public string Nombre { get; set; } = null!;
         public string? Motor { get; set; }
-        public string? Transmision { get; set; }
+        public TipoTransmision? Transmision { get; set; }
         public TipoTraccion? Traccion { get; set; }
         public int? NumPuertas { get; set; }
         public int? NumPasajeros { get; set; }

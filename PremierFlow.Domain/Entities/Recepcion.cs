@@ -27,6 +27,11 @@ namespace PremierFlow.Domain.Entities
         /// </summary>
         public string EntregadoPor { get; set; } = null!;
 
+        // Confirmación de entrega
+        public bool EsPropietarioQuienEntrega { get; set; } = true;
+        public string? RelacionEntregante { get; set; }
+        public string? TelefonoEntregante { get; set; }
+
         /// <summary>
         /// Descripción del estado externo de la carrocería.
         /// </summary>
@@ -37,6 +42,11 @@ namespace PremierFlow.Domain.Entities
         /// </summary>
         public string? AccesoriosRecibidos { get; set; }
 
+        /// <summary>
+        /// Daños exteriores en JSON: [{tipo:int, x:float, y:float, descripcion:string}]
+        /// </summary>
+        public string? DanosExteriorJson { get; set; }
+
         // Checklist de accesorios estándar
         public bool LlantaRepuesto { get; set; } = false;
         public bool Gato { get; set; } = false;
@@ -45,6 +55,30 @@ namespace PremierFlow.Domain.Entities
         public bool Herramientas { get; set; } = false;
         public bool Radio { get; set; } = false;
         public bool Tapetes { get; set; } = false;
+
+        // Checklist extendido - Exterior
+        public bool Antena { get; set; } = false;
+        public bool EspejoIzquierdo { get; set; } = false;
+        public bool EspejoDerecho { get; set; } = false;
+        public bool Limpiaparabrisas { get; set; } = false;
+        public bool PlacaDelantera { get; set; } = false;
+        public bool PlacaTrasera { get; set; } = false;
+        public bool TapaCombustible { get; set; } = false;
+
+        // Checklist extendido - Documentos/Extras
+        public bool ManualVehiculo { get; set; } = false;
+        public bool SegundaLlave { get; set; } = false;
+
+        /// <summary>
+        /// Inspección de ruedas en JSON: [{posicion:string, estadoLlanta:int, estadoRin:int, tuercasCompletas:bool, tieneCopa:bool}]
+        /// </summary>
+        public string? InspeccionRuedasJson { get; set; }
+
+        // Motor
+        public bool NivelAceiteOk { get; set; } = false;
+        public bool NivelRefrigeranteOk { get; set; } = false;
+        public bool NivelLiquidoFrenosOk { get; set; } = false;
+        public bool BateriaOk { get; set; } = false;
 
         public string? ObservacionesGenerales { get; set; }
 
@@ -76,6 +110,15 @@ namespace PremierFlow.Domain.Entities
                 if (Herramientas) count++;
                 if (Radio) count++;
                 if (Tapetes) count++;
+                if (Antena) count++;
+                if (EspejoIzquierdo) count++;
+                if (EspejoDerecho) count++;
+                if (Limpiaparabrisas) count++;
+                if (PlacaDelantera) count++;
+                if (PlacaTrasera) count++;
+                if (TapaCombustible) count++;
+                if (ManualVehiculo) count++;
+                if (SegundaLlave) count++;
                 return count;
             }
         }

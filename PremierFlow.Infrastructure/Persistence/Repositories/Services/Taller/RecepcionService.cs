@@ -1,14 +1,9 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.Win32;
 using PremierFlow.Application.Common;
 using PremierFlow.Application.Dtos.Taller;
 using PremierFlow.Application.Interfaces.Taller;
 using PremierFlow.Domain.Entities;
-using System;
-using System.Collections.Generic;
-using System.Numerics;
-using System.Runtime.ConstrainedExecution;
-using System.Text;
+using PremierFlow.Domain.Enums;
 
 namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
 {
@@ -230,7 +225,183 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             return ApiResponse<bool>.ok(true, "Firma registrada exitosamente.");
         }
 
-        #region Helper
+        public async Task<ApiResponse<DatosCitaWizardDTO>> GetDatosCitaAsync(int citaId)
+        {
+            var cita = await context.Citas
+                .Include(c => c.Cliente)
+                .Include(c => c.Vehiculo).ThenInclude(v => v.Marca)
+                .Include(c => c.Vehiculo).ThenInclude(v => v.Modelo)
+                .Include(c => c.TipoServicio)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c => c.CitaId == citaId && c.Activo);
+
+            if (cita == null)
+                return ApiResponse<DatosCitaWizardDTO>.fail(404, null, "Cita no encontrada.");
+
+            if (!cita.PuedeConvertirseEnOs)
+                return ApiResponse<DatosCitaWizardDTO>.fail(400, null, "La cita no está en estado válido.");
+
+            // Validar que no exista OS para esta cita
+            var existeOs = await context.OrdenesServicio.AnyAsync(o => o.CitaId == citaId && o.Activo);
+            if (existeOs)
+                return ApiResponse<DatosCitaWizardDTO>.fail(400, null, "Ya existe una orden de servicio para esta cita.");
+
+            var dto = new DatosCitaWizardDTO
+            {
+                CitaId = cita.CitaId,
+                CodigoCita = cita.CodigoCita,
+                ClienteNombre = cita.Cliente?.NombreCompleto ?? "",
+                ClienteTelefono = cita.Cliente?.Telefono,
+                VehiculoDescripcion = cita.Vehiculo?.DescripcionCompleta ?? "",
+                VehiculoPlaca = cita.Vehiculo?.Placa,
+                VehiculoVin = cita.Vehiculo?.Vin,
+                KilometrajeActual = cita.Vehiculo?.KilometrajeActual ?? 0,
+                SegmentoVehiculo = (int)(cita.Vehiculo?.Modelo?.Segmento ?? SegmentoVehiculo.Sedan),
+                TipoServicioNombre = cita.TipoServicio?.Nombre ?? "",
+                MotivoVisita = cita.MotivoVisita
+            };
+
+            return ApiResponse<DatosCitaWizardDTO>.ok(dto, "Datos de cita obtenidos.");
+        }
+
+        public async Task<ApiResponse<RecepcionDTO>> IniciarDesdeCitaAsync(IniciarRecepcionDTO dto, string usuarioId)
+        {
+            // 1. Cargar cita con navegaciones
+            var cita = await context.Citas
+                .Include(c => c.Cliente)
+                .Include(c => c.Vehiculo).ThenInclude(v => v.Marca)
+                .Include(c => c.Vehiculo).ThenInclude(v => v.Modelo)
+                .Include(c => c.TipoServicio)
+                .FirstOrDefaultAsync(c => c.CitaId == dto.CitaId && c.Activo);
+
+            if (cita == null)
+                return ApiResponse<RecepcionDTO>.fail(404, null, "Cita no encontrada.");
+
+            if (!cita.PuedeConvertirseEnOs)
+                return ApiResponse<RecepcionDTO>.fail(400, null, "La cita no está en estado válido para iniciar atención.");
+
+            // 2. Validar no exista OS para esta cita
+            var existeOs = await context.OrdenesServicio.AnyAsync(o => o.CitaId == dto.CitaId && o.Activo);
+            if (existeOs)
+                return ApiResponse<RecepcionDTO>.fail(400, null, "Ya existe una orden de servicio para esta cita.");
+
+            // 3. Validar kilometraje
+            if (dto.Kilometraje < cita.Vehiculo.KilometrajeActual)
+                return ApiResponse<RecepcionDTO>.fail(400, null,
+                    $"El kilometraje debe ser mayor o igual al actual ({cita.Vehiculo.KilometrajeActual} km).");
+
+            // 4. Obtener estado ABIERTA
+            var estadoAbierta = await context.EstadosOs
+                .FirstOrDefaultAsync(e => e.Codigo == EstadoOs.Estados.Abierta && e.Activo);
+
+            if (estadoAbierta == null)
+                return ApiResponse<RecepcionDTO>.fail(500, null, "Estado ABIERTA no configurado en el sistema.");
+
+            // 5. Generar número de OS
+            var numeroOs = await GenerarNumeroOsAsync();
+
+            // 6. Crear OrdenServicio
+            var os = new OrdenServicio
+            {
+                NumeroOs = numeroOs,
+                CitaId = dto.CitaId,
+                VehiculoId = cita.VehiculoId,
+                ClienteId = cita.ClienteId,
+                FechaApertura = DateTime.UtcNow,
+                EstadoId = estadoAbierta.EstadoId,
+                KilometrajeIngreso = dto.Kilometraje,
+                NivelCombustible = dto.NivelCombustiblePorcentaje / 100m,
+                TipoIngreso = cita.TipoIngreso,
+                EsGarantia = cita.TipoIngreso == TipoIngreso.Garantia,
+                ObservacionesApertura = dto.ObservacionesApertura,
+                SucursalId = cita.SucursalId,
+                Activo = true,
+                UsuarioCreaId = usuarioId,
+                FechaCreacion = DateTime.UtcNow
+            };
+            context.OrdenesServicio.Add(os);
+
+            // 7. Crear Recepción con todos los campos del wizard
+            var recepcion = new Recepcion
+            {
+                OrdenServicio = os,
+                FechaHoraRecepcion = DateTime.UtcNow,
+                RecibidoPorId = usuarioId,
+                EntregadoPor = dto.EntregadoPor,
+                EsPropietarioQuienEntrega = dto.EsPropietarioQuienEntrega,
+                RelacionEntregante = dto.RelacionEntregante,
+                TelefonoEntregante = dto.TelefonoEntregante,
+                DanosExteriorJson = dto.DanosExteriorJson,
+                LlantaRepuesto = dto.LlantaRepuesto,
+                Gato = dto.Gato,
+                Triangulos = dto.Triangulos,
+                Extintor = dto.Extintor,
+                Herramientas = dto.Herramientas,
+                Radio = dto.Radio,
+                Tapetes = dto.Tapetes,
+                Antena = dto.Antena,
+                EspejoIzquierdo = dto.EspejoIzquierdo,
+                EspejoDerecho = dto.EspejoDerecho,
+                Limpiaparabrisas = dto.Limpiaparabrisas,
+                PlacaDelantera = dto.PlacaDelantera,
+                PlacaTrasera = dto.PlacaTrasera,
+                TapaCombustible = dto.TapaCombustible,
+                ManualVehiculo = dto.ManualVehiculo,
+                SegundaLlave = dto.SegundaLlave,
+                InspeccionRuedasJson = dto.InspeccionRuedasJson,
+                NivelAceiteOk = dto.NivelAceiteOk,
+                NivelRefrigeranteOk = dto.NivelRefrigeranteOk,
+                NivelLiquidoFrenosOk = dto.NivelLiquidoFrenosOk,
+                BateriaOk = dto.BateriaOk,
+                ObservacionesGenerales = dto.ObservacionesGenerales,
+                FirmaClienteBase64 = dto.FirmaClienteBase64,
+                ChecklistCompletado = true,
+                Activo = true,
+                UsuarioCreaId = usuarioId,
+                FechaCreacion = DateTime.UtcNow
+            };
+            context.Recepciones.Add(recepcion);
+
+            // 8. Actualizar vehículo y cita
+            cita.Vehiculo.ActualizarKilometraje(dto.Kilometraje);
+            cita.IniciarProceso();
+            cita.UsuarioModificaId = usuarioId;
+            cita.FechaModificacion = DateTime.UtcNow;
+
+            // 9. SaveChanges (todo en una transacción)
+            await context.SaveChangesAsync();
+
+            // 10. Cargar navegaciones para DTO
+            recepcion.OrdenServicio = os;
+            os.Vehiculo = cita.Vehiculo;
+            os.Cliente = cita.Cliente;
+            os.Estado = estadoAbierta;
+
+            return ApiResponse<RecepcionDTO>.ok(MapToDto(recepcion), "Recepción y Orden de Servicio creadas exitosamente.");
+        }
+
+        #region Helpers
+
+        private async Task<string> GenerarNumeroOsAsync()
+        {
+            var fecha = DateTime.Now;
+            var prefijo = $"OS-{fecha:yyyyMMdd}-";
+
+            var ultimaOs = await context.OrdenesServicio
+                .Where(o => o.NumeroOs.StartsWith(prefijo))
+                .OrderByDescending(o => o.NumeroOs)
+                .FirstOrDefaultAsync();
+
+            int siguiente = 1;
+            if (ultimaOs != null)
+            {
+                var ultimoNumero = ultimaOs.NumeroOs.Replace(prefijo, "");
+                if (int.TryParse(ultimoNumero, out int numero))
+                    siguiente = numero + 1;
+            }
+
+            return $"{prefijo}{siguiente:D4}";
+        }
 
         private static RecepcionDTO MapToDto(Recepcion r)
         {
@@ -241,8 +412,12 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 FechaHoraRecepcion = r.FechaHoraRecepcion,
                 RecibidoPorId = r.RecibidoPorId,
                 EntregadoPor = r.EntregadoPor,
+                EsPropietarioQuienEntrega = r.EsPropietarioQuienEntrega,
+                RelacionEntregante = r.RelacionEntregante,
+                TelefonoEntregante = r.TelefonoEntregante,
                 EstadoCarroceria = r.EstadoCarroceria,
                 AccesoriosRecibidos = r.AccesoriosRecibidos,
+                DanosExteriorJson = r.DanosExteriorJson,
                 LlantaRepuesto = r.LlantaRepuesto,
                 Gato = r.Gato,
                 Triangulos = r.Triangulos,
@@ -250,6 +425,20 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 Herramientas = r.Herramientas,
                 Radio = r.Radio,
                 Tapetes = r.Tapetes,
+                Antena = r.Antena,
+                EspejoIzquierdo = r.EspejoIzquierdo,
+                EspejoDerecho = r.EspejoDerecho,
+                Limpiaparabrisas = r.Limpiaparabrisas,
+                PlacaDelantera = r.PlacaDelantera,
+                PlacaTrasera = r.PlacaTrasera,
+                TapaCombustible = r.TapaCombustible,
+                ManualVehiculo = r.ManualVehiculo,
+                SegundaLlave = r.SegundaLlave,
+                InspeccionRuedasJson = r.InspeccionRuedasJson,
+                NivelAceiteOk = r.NivelAceiteOk,
+                NivelRefrigeranteOk = r.NivelRefrigeranteOk,
+                NivelLiquidoFrenosOk = r.NivelLiquidoFrenosOk,
+                BateriaOk = r.BateriaOk,
                 ObservacionesGenerales = r.ObservacionesGenerales,
                 FirmaClienteBase64 = r.FirmaClienteBase64,
                 ChecklistCompletado = r.ChecklistCompletado,
@@ -266,38 +455,4 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
 
         #endregion
     }
-
-
-//---
-
-//## Resumen de métodos:
-
-//| Método | Descripción |
-//|--------|-------------|
-//| `GetByIdAsync` | Obtener por ID |
-//| `GetByOsIdAsync` | Obtener recepción de una OS |
-//| `GetPendientesFirmaAsync` | Recepciones sin firma del cliente |
-//| `CreateAsync` | Crear recepción |
-//| `UpdateAsync` | Actualizar checklist |
-//| `CompletarChecklistAsync` | Marcar checklist como completado |
-//| `RegistrarFirmaAsync` | Registrar firma digital del cliente |
-
-//---
-
-//## Flujo de uso:
-//```
-//1. Cliente llega con su vehículo
-//   ↓
-//2. Recepcionista crea Recepción(CreateAsync)
-//   - Registra quién entrega
-//   - Marca accesorios presentes
-//   - Describe estado de carrocería
-//   ↓
-//3. Toma fotos(Evidencias - siguiente servicio)
-//   ↓
-//4. Completa checklist(CompletarChecklistAsync)
-//   ↓
-//5. Cliente firma en tablet(RegistrarFirmaAsync)
-//   ↓
-//6. Recepción completa(EstaCompleta = true)
 }

@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PremierFlow.Infrastructure.Persistence;
 
@@ -11,9 +12,11 @@ using PremierFlow.Infrastructure.Persistence;
 namespace PremierFlow.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(PremierFlowDbContext))]
-    partial class PremierFlowDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260219160907_RemoveTipoCombustibleTransmisionFromVehiculo")]
+    partial class RemoveTipoCombustibleTransmisionFromVehiculo
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -2163,8 +2166,8 @@ namespace PremierFlow.Infrastructure.Persistence.Migrations
                         .HasColumnName("traccion");
 
                     b.Property<string>("Transmision")
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
                         .HasColumnName("transmision");
 
                     b.Property<string>("UsuarioCreaId")

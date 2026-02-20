@@ -169,6 +169,29 @@ namespace PremierFlow.Domain.Enums
         Automatica,
         CVT ,
         DualClutch,
-        Semiautomatica 
+        Semiautomatica
+    }
+
+    /// <summary>
+    /// Tipo de daño registrado en inspección exterior.
+    /// </summary>
+    public enum TipoDano
+    {
+        Golpe = 1,
+        Rayadura = 2,
+        Abolladura = 3,
+        Faltante = 4,
+        Rotura = 5,
+        Otro = 99
+    }
+
+    /// <summary>
+    /// Estado de un componente inspeccionado (ruedas, etc).
+    /// </summary>
+    public enum EstadoComponente
+    {
+        Malo = 1,
+        Regular = 2,
+        Bueno = 3
     }
 }

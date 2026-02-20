@@ -31,9 +31,9 @@ namespace PremierFlow.Domain.Entities
         public string? Motor { get; set; }
 
         /// <summary>
-        /// Tipo de transmisión (Manual 6 vel, CVT, Automática 8 vel).
+        /// Tipo de transmisión.
         /// </summary>
-        public string? Transmision { get; set; }
+        public TipoTransmision? Transmision { get; set; }
 
         public TipoTraccion? Traccion { get; set; }
 
@@ -72,6 +72,6 @@ namespace PremierFlow.Domain.Entities
         public virtual ICollection<Vehiculo> Vehiculos { get; set; } = new List<Vehiculo>();
 
         // Métodos de dominio
-        public string DescripcionCompleta => $"{Nombre} - {Motor ?? "N/A"} {Transmision ?? ""}".Trim();
+        public string DescripcionCompleta => $"{Nombre} - {Motor ?? "N/A"} {Transmision?.ToString() ?? ""}".Trim();
     }
 }

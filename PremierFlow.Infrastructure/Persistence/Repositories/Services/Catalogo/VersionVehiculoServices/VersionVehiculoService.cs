@@ -212,7 +212,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Catalogo.
                     PrecioBase = v.PrecioBase,
                     AnioVersion = v.AnioVersion,
                     CaracteristicasPrincipales = v.CaracteristicasPrincipales,
-                    DescripcionCompleta = $"{v.Nombre} - {v.Motor ?? "N/A"} {v.Transmision ?? ""}".Trim(),
+                    DescripcionCompleta = v.Nombre + " - " + (v.Motor ?? "N/A"),
                     ModeloNombre = v.Modelo.Nombre,
                     MarcaNombre = v.Modelo.Marca.Nombre
                 }).ToListAsync();
@@ -295,7 +295,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Catalogo.
                 CaracteristicasPrincipales = version.CaracteristicasPrincipales,
                 ModeloNombre = version.Modelo?.Nombre,
                 MarcaNombre = version.Modelo?.Marca?.Nombre,
-                DescripcionCompleta = $"{version.Nombre} - {version.Motor ?? "N/A"} {version.Transmision ?? ""}".Trim()
+                DescripcionCompleta = $"{version.Nombre} - {version.Motor ?? "N/A"} {version.Transmision?.ToString() ?? ""}".Trim()
             };
         }
     }

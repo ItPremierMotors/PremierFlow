@@ -15,5 +15,7 @@ namespace PremierFlow.Application.Interfaces.Taller
         Task<ApiResponse<RecepcionDTO>> UpdateAsync(UpdateRecepcionDTO dto, string usuarioId);
         Task<ApiResponse<bool>> CompletarChecklistAsync(int recepcionId, string usuarioId);
         Task<ApiResponse<bool>> RegistrarFirmaAsync(RegistrarFirmaDTO dto, string usuarioId);
+        Task<ApiResponse<RecepcionDTO>> IniciarDesdeCitaAsync(IniciarRecepcionDTO dto, string usuarioId);
+        Task<ApiResponse<DatosCitaWizardDTO>> GetDatosCitaAsync(int citaId);
     }
 }

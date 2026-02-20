@@ -35,8 +35,6 @@ namespace PremierFlow.Domain.Entities
         public int? VersionId { get; set; }
         public int Anio { get; set; }
         public string? Color { get; set; }
-        public TipoCombustible TipoCombustible { get; set; } = TipoCombustible.Gasolina;  // ← Agregado
-        public TipoTransmision? Transmision { get; set; }  // ← Agregado
 
         #endregion
 
