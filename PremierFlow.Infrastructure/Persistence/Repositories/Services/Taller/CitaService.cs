@@ -222,9 +222,19 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             if (tieneCitaActiva)
                 return ApiResponse<CitaDTO>.fail(400, null, "El vehículo ya tiene una cita activa.");
 
-            // 5. Validar fecha futura
-            if (dto.FechaHoraInicio <= DateTime.Now)
-                return ApiResponse<CitaDTO>.fail(400, null, "La fecha de la cita debe ser futura.");
+            // 5. Validar fecha
+            if (dto.TipoIngreso == TipoIngreso.WalkIn)
+            {
+                // Walk-In: el cliente está presente, solo validar que sea hoy o futuro
+                if (dto.FechaHoraInicio.Date < DateTime.Now.Date)
+                    return ApiResponse<CitaDTO>.fail(400, null, "La fecha del Walk-In no puede ser anterior a hoy.");
+            }
+            else
+            {
+                // Cita y Garantía: debe ser fecha/hora futura
+                if (dto.FechaHoraInicio <= DateTime.Now)
+                    return ApiResponse<CitaDTO>.fail(400, null, "La fecha de la cita debe ser futura.");
+            }
 
             // 6. Calcular hora fin
             var fechaHoraFin = dto.FechaHoraInicio.AddMinutes(tipoServicio.DuracionEstimadaMin);
@@ -267,8 +277,8 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                     return ApiResponse<CitaDTO>.fail(400, null,
                         "Debe seleccionar un bloque horario. Hay bloques configurados para esta fecha.");
 
-                // Sin bloques configurados y es Cita regular — no permitir
-                if (dto.TipoIngreso == TipoIngreso.Cita)
+                // Sin bloques configurados — Cita y Garantia requieren bloques, solo Walk-In permite hora manual
+                if (dto.TipoIngreso != TipoIngreso.WalkIn)
                     return ApiResponse<CitaDTO>.fail(400, null,
                         "No hay bloques horarios configurados para esta fecha. Configure bloques o use Walk-In.");
             }
@@ -286,6 +296,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 TipoServicioId = dto.TipoServicioId,
                 FechaHoraInicio = dto.FechaHoraInicio,
                 FechaHoraFin = fechaHoraFin,
+                FechaRecepcion = dto.FechaHoraInicio.Date,
                 Estado = EstadoCita.Agendada,
                 TipoIngreso = dto.TipoIngreso,
                 MotivoVisita = dto.MotivoVisita,
@@ -505,7 +516,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
 
         public async Task<ApiResponse<CitaDTO>> TransferirAsync(TransferirCitaDTO dto, string usuarioId)
         {
-            // 1. Cargar la cita original con sus relaciones
+            // 1. Cargar la cita con sus relaciones
             var cita = await context.Citas
                 .Include(c => c.Cliente)
                 .Include(c => c.Vehiculo)
@@ -522,17 +533,41 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             if (cita.Estado != EstadoCita.EnProceso)
                 return ApiResponse<CitaDTO>.fail(400, null, "Solo se pueden transferir citas en proceso.");
 
-            var duracionTotal = cita.TipoServicio.DuracionEstimadaMin;
+            // 2. Calcular minutos restantes basado en la duración ACTUAL de la cita
+            var minutosActuales = (int)cita.Duracion.TotalMinutes;
 
             if (dto.MinutosTrabajadosHoy <= 0)
                 return ApiResponse<CitaDTO>.fail(400, null, "Los minutos trabajados deben ser mayor a 0.");
 
-            if (dto.MinutosTrabajadosHoy >= duracionTotal)
+            if (dto.MinutosTrabajadosHoy >= minutosActuales)
                 return ApiResponse<CitaDTO>.fail(400, null, "Si se trabajaron todos los minutos, use Completar en vez de Transferir.");
 
-            var minutosRestantes = duracionTotal - dto.MinutosTrabajadosHoy;
+            var minutosRestantes = minutosActuales - dto.MinutosTrabajadosHoy;
 
-            // 2. Ajustar capacidad de HOY usando FK directa
+            // 3. Validar capacidad de mañana ANTES de modificar nada
+            var manana = cita.FechaHoraInicio.Date.AddDays(1);
+
+            var capacidadManana = await context.CapacidadTaller
+                .FirstOrDefaultAsync(c => c.Fecha.Date == manana &&
+                                         c.SucursalId == cita.SucursalId &&
+                                         c.Activo);
+
+            if (capacidadManana == null)
+                return ApiResponse<CitaDTO>.fail(400, null,
+                    $"No hay capacidad de taller configurada para {manana:dd/MM/yyyy}. Configure la capacidad antes de transferir.");
+
+            if (!capacidadManana.TieneCapacidadPara(minutosRestantes))
+                return ApiResponse<CitaDTO>.fail(400, null,
+                    $"No hay capacidad suficiente para {manana:dd/MM/yyyy}. Se requieren {minutosRestantes} min.");
+
+            // 3.1 Buscar primer bloque disponible para mañana
+            var bloqueManana = await context.BloquesHorario
+                .Where(b => b.CapacidadId == capacidadManana.CapacidadId &&
+                            b.Activo && b.VehiculosAgendados < b.CapacidadMaximaVehiculos)
+                .OrderBy(b => b.HoraInicio)
+                .FirstOrDefaultAsync();
+
+            // 4. Liberar capacidad y bloque de HOY
             if (cita.CapacidadId.HasValue)
             {
                 var capacidadHoy = await context.CapacidadTaller.FindAsync(cita.CapacidadId.Value);
@@ -543,67 +578,46 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 }
             }
 
-            // 3. Completar la cita original como transferida
-            cita.Transferir(dto.MinutosTrabajadosHoy);
+            if (cita.BloqueHorarioId.HasValue)
+            {
+                var bloqueHoy = await context.BloquesHorario.FindAsync(cita.BloqueHorarioId.Value);
+                if (bloqueHoy != null)
+                    bloqueHoy.LiberarEspacio();
+            }
+
+            // 5. Actualizar la MISMA cita para mañana (no se crea fila nueva)
+            var horaInicio = new DateTime(manana.Year, manana.Month, manana.Day, 8, 0, 0);
+            if (bloqueManana != null)
+            {
+                horaInicio = new DateTime(manana.Year, manana.Month, manana.Day,
+                    bloqueManana.HoraInicio.Hours, bloqueManana.HoraInicio.Minutes, 0);
+            }
+
+            cita.MinutosTrabajados = (cita.MinutosTrabajados ?? 0) + dto.MinutosTrabajadosHoy;
+            cita.FechaHoraInicio = horaInicio;
+            cita.FechaHoraFin = horaInicio.AddMinutes(minutosRestantes);
+            cita.CapacidadId = capacidadManana.CapacidadId;
+            cita.BloqueHorarioId = bloqueManana?.BloqueId;
             cita.Observaciones = (cita.Observaciones ?? "") +
-                $"\n[Transferida] {dto.MinutosTrabajadosHoy} min trabajados, {minutosRestantes} min pendientes.";
+                $"\n[Transferida {DateTime.Now:dd/MM}] {dto.MinutosTrabajadosHoy} min trabajados, {minutosRestantes} min pendientes.";
             cita.UsuarioModificaId = usuarioId;
             cita.FechaModificacion = DateTime.UtcNow;
+            // Estado sigue siendo EnProceso — no cambia
 
-            // 4. Crear nueva cita para mañana
-            var manana = DateTime.UtcNow.Date.AddDays(1);
-            var horaInicio = new DateTime(manana.Year, manana.Month, manana.Day, 8, 0, 0); // 8:00 AM
-            var horaFin = horaInicio.AddMinutes(minutosRestantes);
+            // 6. Reservar capacidad y bloque de mañana
+            capacidadManana.ReservarMinutos(minutosRestantes);
 
-            var codigoCita = await GenerarCodigoCitaAsync();
-            var preOrdenId = await GenerarPreOrdenIdAsync();
-
-            // 5. Buscar capacidad de mañana
-            var capacidadManana = await context.CapacidadTaller
-                .FirstOrDefaultAsync(c => c.Fecha.Date == manana &&
-                                         c.SucursalId == cita.SucursalId &&
-                                         c.Activo);
-
-            var nuevaCita = new Cita
+            if (bloqueManana != null)
             {
-                CodigoCita = codigoCita,
-                PreOrdenId = preOrdenId,
-                ClienteId = cita.ClienteId,
-                VehiculoId = cita.VehiculoId,
-                TipoServicioId = cita.TipoServicioId,
-                FechaHoraInicio = horaInicio,
-                FechaHoraFin = horaFin,
-                Estado = EstadoCita.EnProceso,
-                TipoIngreso = cita.TipoIngreso,
-                MotivoVisita = cita.MotivoVisita,
-                Observaciones = $"[Continuación de {cita.CodigoCita}] {minutosRestantes} min pendientes.",
-                SucursalId = cita.SucursalId,
-                CitaOrigenId = cita.CitaId,
-                CapacidadId = capacidadManana?.CapacidadId,
-                BloqueHorarioId = null,
-                Activo = true,
-                UsuarioCreaId = usuarioId,
-                FechaCreacion = DateTime.UtcNow
-            };
-
-            context.Citas.Add(nuevaCita);
-
-            // Forzar reserva en capacidad de mañana (el vehículo ya está en taller)
-            if (capacidadManana != null)
-            {
-                capacidadManana.MinutosReservados += minutosRestantes;
+                bloqueManana.AgendarVehiculo();
             }
 
             await context.SaveChangesAsync();
 
-            // Cargar navegaciones para el DTO de la nueva cita
-            nuevaCita.Cliente = cita.Cliente;
-            nuevaCita.Vehiculo = cita.Vehiculo;
-            nuevaCita.TipoServicio = cita.TipoServicio;
-            nuevaCita.Sucursal = cita.Sucursal;
+            // La OS no se toca — sigue apuntando al mismo CitaId
 
-            return ApiResponse<CitaDTO>.ok(MapToDto(nuevaCita),
-                $"Cita transferida. {dto.MinutosTrabajadosHoy} min registrados hoy, {minutosRestantes} min para mañana.");
+            return ApiResponse<CitaDTO>.ok(MapToDto(cita),
+                $"Cita transferida a {manana:dd/MM/yyyy}. {dto.MinutosTrabajadosHoy} min registrados, {minutosRestantes} min pendientes.");
         }
 
         #endregion
@@ -663,6 +677,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 TipoServicioId = c.TipoServicioId,
                 FechaHoraInicio = c.FechaHoraInicio,
                 FechaHoraFin = c.FechaHoraFin,
+                FechaRecepcion = c.FechaRecepcion,
                 Estado = c.Estado,
                 TipoIngreso = c.TipoIngreso,
                 MotivoVisita = c.MotivoVisita,
@@ -678,10 +693,8 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 SucursalNombre = c.Sucursal?.Nombre,
                 DuracionMinutos = (int)c.Duracion.TotalMinutes,
                 MinutosTrabajados = c.MinutosTrabajados,
-                CitaOrigenId = c.CitaOrigenId,
                 CapacidadId = c.CapacidadId,
                 BloqueHorarioId = c.BloqueHorarioId,
-                EsTransferencia = c.EsTransferencia,
                 EstaActiva = c.EstaActiva,
                 PuedeConvertirseEnOs = c.PuedeConvertirseEnOs
             };

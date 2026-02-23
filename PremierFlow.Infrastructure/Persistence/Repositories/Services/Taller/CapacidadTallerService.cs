@@ -57,14 +57,21 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 if (!sucursalExiste)
                     return ApiResponse<CapacidadTallerDTO>.fail(400, null, "La sucursal no existe o está inactiva.");
             }
-            //3. Crear la capacidad
+            //3. Validar datos de capacidad
+            if (dto.TecnicosDisponibles <= 0)
+                return ApiResponse<CapacidadTallerDTO>.fail(400, null, "Debe haber al menos 1 técnico disponible.");
+
+            if (dto.MinutosPorTecnico <= 0)
+                return ApiResponse<CapacidadTallerDTO>.fail(400, null, "Los minutos por técnico deben ser mayor a 0.");
+
+            //4. Crear la capacidad — MinutosDisponibles se calcula automáticamente
             var capacidad = new CapacidadTaller
             {
                 Fecha = dto.Fecha.Date,
                 Turno = dto.Turno,
                 TecnicosDisponibles = dto.TecnicosDisponibles,
                 BahiasDisponibles = dto.BahiasDisponibles,
-                MinutosDisponibles = dto.MinutosDisponibles,
+                MinutosPorTecnico = dto.MinutosPorTecnico,
                 MinutosReservados = 0,
                 MinutosUtilizados = 0,
                 MinutosSobretiempo = 0,
@@ -76,6 +83,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 UsuarioCreaId = usuarioId,
                 FechaCreacion = DateTime.UtcNow
             };
+            capacidad.RecalcularCapacidad();
             context.CapacidadTaller.Add(capacidad);
             await context.SaveChangesAsync();
             //cargar sucursales para dto
@@ -127,7 +135,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                     Turno = plantilla.Turno,
                     TecnicosDisponibles = plantilla.TecnicosDisponibles,
                     BahiasDisponibles = plantilla.BahiasDisponibles,
-                    MinutosDisponibles = plantilla.MinutosDisponibles,
+                    MinutosPorTecnico = plantilla.MinutosPorTecnico,
                     MinutosReservados = 0,
                     MinutosUtilizados = 0,
                     MinutosSobretiempo = 0,
@@ -139,6 +147,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                     UsuarioCreaId = usuarioId,
                     FechaCreacion = DateTime.UtcNow
                 };
+                capacidad.RecalcularCapacidad();
                 context.CapacidadTaller.Add(capacidad);//agregar a la base de datos
                 capacidades.Add(capacidad);//agregar a la lista
             }
@@ -271,15 +280,24 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 return ApiResponse<CapacidadTallerDTO>.fail(400, null,
                     "No se puede editar la capacidad de una fecha que ya pasó.");
 
-            //validar que no se reduza la capacidad por debajo de lo ya reservado o utilizado
-            if (dto.MinutosDisponibles < capacidad.MinutosReservados)
+            // Validar datos
+            if (dto.TecnicosDisponibles <= 0)
+                return ApiResponse<CapacidadTallerDTO>.fail(400, null, "Debe haber al menos 1 técnico disponible.");
+
+            if (dto.MinutosPorTecnico <= 0)
+                return ApiResponse<CapacidadTallerDTO>.fail(400, null, "Los minutos por técnico deben ser mayor a 0.");
+
+            // Validar que la nueva capacidad no quede por debajo de lo ya reservado
+            var nuevosMinutosDisponibles = dto.TecnicosDisponibles * dto.MinutosPorTecnico;
+            if (nuevosMinutosDisponibles < capacidad.MinutosReservados)
                 return ApiResponse<CapacidadTallerDTO>.fail(400, null,
-                    $"No puede reducir la capacidad por debajo de lo reservado ({capacidad.MinutosReservados} min).");
-            
+                    $"No puede reducir la capacidad ({nuevosMinutosDisponibles} min) por debajo de lo reservado ({capacidad.MinutosReservados} min).");
+
             capacidad.Turno = dto.Turno;
             capacidad.TecnicosDisponibles = dto.TecnicosDisponibles;
             capacidad.BahiasDisponibles = dto.BahiasDisponibles;
-            capacidad.MinutosDisponibles = dto.MinutosDisponibles;
+            capacidad.MinutosPorTecnico = dto.MinutosPorTecnico;
+            capacidad.RecalcularCapacidad();
             capacidad.PermiteAgendamiento = dto.PermiteAgendamiento;
             capacidad.PermiteSobretiempo = dto.PermiteSobretiempo;
             capacidad.Observaciones = dto.Observaciones;
@@ -300,6 +318,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 Turno = c.Turno,
                 TecnicosDisponibles = c.TecnicosDisponibles,
                 BahiasDisponibles = c.BahiasDisponibles,
+                MinutosPorTecnico = c.MinutosPorTecnico,
                 MinutosDisponibles = c.MinutosDisponibles,
                 MinutosReservados = c.MinutosReservados,
                 MinutosUtilizados = c.MinutosUtilizados,

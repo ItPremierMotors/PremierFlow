@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PremierFlow.Infrastructure.Persistence;
 
@@ -11,9 +12,11 @@ using PremierFlow.Infrastructure.Persistence;
 namespace PremierFlow.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(PremierFlowDbContext))]
-    partial class PremierFlowDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260221004111_RemoveCitaOrigenId")]
+    partial class RemoveCitaOrigenId
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -342,12 +345,6 @@ namespace PremierFlow.Infrastructure.Persistence.Migrations
                         .HasDefaultValue(0)
                         .HasColumnName("minutos_disponibles");
 
-                    b.Property<int>("MinutosPorTecnico")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValue(480)
-                        .HasColumnName("minutos_por_tecnico");
-
                     b.Property<int>("MinutosReservados")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int")
@@ -474,10 +471,6 @@ namespace PremierFlow.Infrastructure.Persistence.Migrations
                         .HasColumnType("datetime2")
                         .HasColumnName("fecha_modificacion");
 
-                    b.Property<DateTime>("FechaRecepcion")
-                        .HasColumnType("datetime2")
-                        .HasColumnName("fecha_recepcion");
-
                     b.Property<int?>("MinutosTrabajados")
                         .HasColumnType("int")
                         .HasColumnName("minutos_trabajados");
@@ -542,8 +535,6 @@ namespace PremierFlow.Infrastructure.Persistence.Migrations
                     b.HasIndex("Estado");
 
                     b.HasIndex("FechaHoraInicio");
-
-                    b.HasIndex("FechaRecepcion");
 
                     b.HasIndex("SucursalId");
 

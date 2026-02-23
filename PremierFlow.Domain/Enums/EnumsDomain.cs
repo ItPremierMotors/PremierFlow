@@ -84,8 +84,7 @@ namespace PremierFlow.Domain.Enums
         EnProceso = 3,
         Completada = 4,
         Cancelada = 5,
-        NoShow = 6,
-        Transferida = 7
+        NoShow = 6
     }
 
     /// <summary>

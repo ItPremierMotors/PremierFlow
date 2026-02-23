@@ -115,6 +115,7 @@ namespace PremierFlow.Infrastructure.Configurations
             builder.Property(e => e.Turno).HasColumnName("turno").HasConversion<string>().HasMaxLength(20);
             builder.Property(e => e.TecnicosDisponibles).HasColumnName("tecnicos_disponibles").HasDefaultValue(0);
             builder.Property(e => e.BahiasDisponibles).HasColumnName("bahias_disponibles").HasDefaultValue(0);
+            builder.Property(e => e.MinutosPorTecnico).HasColumnName("minutos_por_tecnico").HasDefaultValue(480);
             builder.Property(e => e.MinutosDisponibles).HasColumnName("minutos_disponibles").HasDefaultValue(0);
             builder.Property(e => e.MinutosReservados).HasColumnName("minutos_reservados").HasDefaultValue(0);
             builder.Property(e => e.MinutosUtilizados).HasColumnName("minutos_utilizados").HasDefaultValue(0);
@@ -184,8 +185,8 @@ namespace PremierFlow.Infrastructure.Configurations
             builder.Property(e => e.MotivoCancelacion).HasColumnName("motivo_cancelacion").HasColumnType("nvarchar(2000)");
             builder.Property(e => e.PreOrdenId).HasColumnName("pre_orden_id").HasMaxLength(50);
             builder.Property(e => e.SucursalId).HasColumnName("sucursal_id");
+            builder.Property(e => e.FechaRecepcion).HasColumnName("fecha_recepcion").IsRequired();
             builder.Property(e => e.MinutosTrabajados).HasColumnName("minutos_trabajados");
-            builder.Property(e => e.CitaOrigenId).HasColumnName("cita_origen_id");
             builder.Property(e => e.CapacidadId).HasColumnName("capacidad_id");
             builder.Property(e => e.BloqueHorarioId).HasColumnName("bloque_horario_id");
             builder.Property(e => e.UsuarioCreaId).HasColumnName("usuario_crea_id").HasMaxLength(450);
@@ -197,17 +198,16 @@ namespace PremierFlow.Infrastructure.Configurations
             builder.HasOne(e => e.Vehiculo).WithMany(v => v.Citas).HasForeignKey(e => e.VehiculoId).OnDelete(DeleteBehavior.Restrict);
             builder.HasOne(e => e.TipoServicio).WithMany(t => t.Citas).HasForeignKey(e => e.TipoServicioId).OnDelete(DeleteBehavior.Restrict);
             builder.HasOne(e => e.Sucursal).WithMany().HasForeignKey(e => e.SucursalId).OnDelete(DeleteBehavior.Restrict);
-            builder.HasOne(e => e.CitaOrigen).WithMany().HasForeignKey(e => e.CitaOrigenId).OnDelete(DeleteBehavior.Restrict);
             builder.HasOne(e => e.Capacidad).WithMany().HasForeignKey(e => e.CapacidadId).OnDelete(DeleteBehavior.NoAction);
             builder.HasOne(e => e.BloqueHorario).WithMany().HasForeignKey(e => e.BloqueHorarioId).OnDelete(DeleteBehavior.NoAction);
 
             builder.HasIndex(e => e.CodigoCita).IsUnique();
             builder.HasIndex(e => e.FechaHoraInicio);
+            builder.HasIndex(e => e.FechaRecepcion);
             builder.HasIndex(e => e.Estado);
             builder.Ignore(e => e.Duracion);
             builder.Ignore(e => e.EstaActiva);
             builder.Ignore(e => e.PuedeConvertirseEnOs);
-            builder.Ignore(e => e.EsTransferencia);
         }
     }
 

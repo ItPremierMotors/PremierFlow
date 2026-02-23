@@ -44,9 +44,14 @@ namespace PremierFlow.Domain.Entities
         public string? PreOrdenId { get; set; }
         public int? SucursalId { get; set; }
 
-        // Transferencia
+        /// <summary>
+        /// Fecha original de recepción. Se establece al agendar y NUNCA cambia,
+        /// incluso si la cita es transferida a otro día.
+        /// </summary>
+        public DateTime FechaRecepcion { get; set; }
+
+        // Acumulado de minutos trabajados (se suma en cada transferencia)
         public int? MinutosTrabajados { get; set; }
-        public int? CitaOrigenId { get; set; }
 
         // Relación con Capacidad/Bloque
         public int? CapacidadId { get; set; }
@@ -58,12 +63,10 @@ namespace PremierFlow.Domain.Entities
         public virtual TipoServicio TipoServicio { get; set; } = null!;
         public virtual OrdenServicio? OrdenServicio { get; set; }
         public virtual Sucursal? Sucursal { get; set; }
-        public virtual Cita? CitaOrigen { get; set; }
         public virtual CapacidadTaller? Capacidad { get; set; }
         public virtual BloqueHorario? BloqueHorario { get; set; }
 
         // Métodos de dominio
-        public bool EsTransferencia => CitaOrigenId.HasValue;
         public TimeSpan Duracion => FechaHoraFin - FechaHoraInicio;
 
         public bool EstaActiva => Estado == EstadoCita.Agendada || Estado == EstadoCita.Confirmada;
@@ -110,16 +113,6 @@ namespace PremierFlow.Domain.Entities
             Estado = EstadoCita.Completada;
         }
 
-        public void Transferir(int minutosTrabajados)
-        {
-            if (Estado != EstadoCita.EnProceso)
-                throw new InvalidOperationException("Solo se pueden transferir citas en proceso.");
-            if (minutosTrabajados <= 0)
-                throw new InvalidOperationException("Los minutos trabajados deben ser mayor a 0.");
-
-            MinutosTrabajados = minutosTrabajados;
-            Estado = EstadoCita.Transferida;
-        }
     }
 
 }

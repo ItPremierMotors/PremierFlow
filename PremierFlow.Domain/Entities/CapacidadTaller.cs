@@ -14,7 +14,17 @@ namespace PremierFlow.Domain.Entities
         public int TecnicosDisponibles { get; set; } = 0;
         public int BahiasDisponibles { get; set; } = 0;
 
+        /// <summary>
+        /// Minutos de jornada laboral por técnico (default 480 = 8 horas).
+        /// Configurable para medios días (240), turnos especiales, etc.
+        /// </summary>
+        public int MinutosPorTecnico { get; set; } = 480;
+
         // Planificación
+        /// <summary>
+        /// Capacidad total del día = TecnicosDisponibles × MinutosPorTecnico.
+        /// Se calcula automáticamente al crear/actualizar.
+        /// </summary>
         public int MinutosDisponibles { get; set; } = 0;
         public int MinutosReservados { get; set; } = 0;
 
@@ -69,29 +79,13 @@ namespace PremierFlow.Domain.Entities
             : 0;
 
         public bool TuvoSobretiempo => MinutosSobretiempo > 0;
+
+        /// <summary>
+        /// Recalcula MinutosDisponibles basado en técnicos × minutos por técnico.
+        /// </summary>
+        public void RecalcularCapacidad()
+        {
+            MinutosDisponibles = TecnicosDisponibles * MinutosPorTecnico;
+        }
     }
-//```
-
-//---
-
-//## Resumen:
-
-//| Campo | Propósito |
-//|-------|-----------|
-//| `MinutosDisponibles` | Lo que planificas(8 horas = 480) |
-//| `MinutosReservados` | Lo que agendas(citas) |
-//| `MinutosUtilizados` | Lo que realmente se trabajó |
-//| `MinutosSobretiempo` | Tiempo extra trabajado |
-//| `PermiteSobretiempo` | ¿Permitir que el día se extienda? |
-
-//---
-
-//## Reportes que podrás generar:
-//```
-//Día: 15/01/2026
-//- Capacidad: 480 min(8h)
-//- Agendado: 450 min
-//- Trabajado: 520 min
-//- Sobretiempo: 40 min
-//- Eficiencia: 115% (trabajó más de lo agendado)
 }

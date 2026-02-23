@@ -12,6 +12,7 @@ namespace PremierFlow.Application.Dtos.Taller
         public TurnoTaller Turno { get; set; }
         public int TecnicosDisponibles { get; set; }
         public int BahiasDisponibles { get; set; }
+        public int MinutosPorTecnico { get; set; }
 
         // Planificación
         public int MinutosDisponibles { get; set; }
@@ -40,7 +41,7 @@ namespace PremierFlow.Application.Dtos.Taller
         public TurnoTaller Turno { get; set; } = TurnoTaller.Completo;
         public int TecnicosDisponibles { get; set; }
         public int BahiasDisponibles { get; set; }
-        public int MinutosDisponibles { get; set; }
+        public int MinutosPorTecnico { get; set; } = 480;
         public bool PermiteAgendamiento { get; set; } = true;
         public bool PermiteSobretiempo { get; set; } = true;
         public string? Observaciones { get; set; }
@@ -52,7 +53,7 @@ namespace PremierFlow.Application.Dtos.Taller
         public TurnoTaller Turno { get; set; }
         public int TecnicosDisponibles { get; set; }
         public int BahiasDisponibles { get; set; }
-        public int MinutosDisponibles { get; set; }
+        public int MinutosPorTecnico { get; set; } = 480;
         public bool PermiteAgendamiento { get; set; }
         public bool PermiteSobretiempo { get; set; }
         public string? Observaciones { get; set; }

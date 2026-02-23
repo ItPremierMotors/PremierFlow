@@ -14,6 +14,7 @@ namespace PremierFlow.Application.Dtos.Taller
         public int TipoServicioId { get; set; }
         public DateTime FechaHoraInicio { get; set; }
         public DateTime FechaHoraFin { get; set; }
+        public DateTime FechaRecepcion { get; set; }
         public EstadoCita Estado { get; set; }
         public TipoIngreso TipoIngreso { get; set; }
         public string MotivoVisita { get; set; } = null!;
@@ -30,16 +31,15 @@ namespace PremierFlow.Application.Dtos.Taller
         public string? SucursalNombre { get; set; }
         public int DuracionMinutos { get; set; }
         public int? MinutosTrabajados { get; set; }
-        public int? CitaOrigenId { get; set; }
         public int? CapacidadId { get; set; }
         public int? BloqueHorarioId { get; set; }
-        public bool EsTransferencia { get; set; }
         public string EstadoNombre => Estado.ToString();
         public bool EstaActiva { get; set; }
         public bool PuedeConvertirseEnOs { get; set; }
         public string HoraInicioFormateada => FechaHoraInicio.ToString("HH:mm");
         public string HoraFinFormateada => FechaHoraFin.ToString("HH:mm");
         public string FechaFormateada => FechaHoraInicio.ToString("dd/MM/yyyy");
+        public string FechaRecepcionFormateada => FechaRecepcion.ToString("dd/MM/yyyy");
     }
     
     public class CreateCitaDTO
