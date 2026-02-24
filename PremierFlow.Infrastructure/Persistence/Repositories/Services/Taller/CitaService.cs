@@ -29,6 +29,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                     .ThenInclude(v => v.Modelo)
                 .Include(c => c.TipoServicio)
                 .Include(c => c.Sucursal)
+                .Include(c => c.OrdenServicio)
                 .AsNoTracking()
                 .FirstOrDefaultAsync(c => c.CitaId == citaId && c.Activo);
 
@@ -47,6 +48,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                    .ThenInclude(v => v.Modelo)
                .Include(c => c.TipoServicio)
                .Include(c => c.Sucursal)
+               .Include(c => c.OrdenServicio)
                .AsNoTracking()
                .FirstOrDefaultAsync(c => c.CodigoCita == codigoCita && c.Activo);
             if (cita == null)
@@ -65,6 +67,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                    .ThenInclude(v => v.Modelo)
                .Include(c => c.TipoServicio)
                .Include(c => c.Sucursal)
+               .Include(c => c.OrdenServicio)
                .AsNoTracking()
                .Where(c => c.Activo)
                .OrderByDescending(c => c.FechaHoraInicio)
@@ -82,6 +85,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                     .ThenInclude(v => v.Modelo)
                 .Include(c => c.TipoServicio)
                 .Include(c => c.Sucursal)
+                .Include(c => c.OrdenServicio)
                 .AsNoTracking()
                 .Where(c => c.FechaHoraInicio.Date == fecha.Date && c.Activo);
 
@@ -101,6 +105,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                     .ThenInclude(v => v.Modelo)
                 .Include(c => c.TipoServicio)
                 .Include(c => c.Sucursal)
+                .Include(c => c.OrdenServicio)
                 .AsNoTracking()
                 .Where(c => c.ClienteId == clienteId && c.Activo)
                 .OrderByDescending(c => c.FechaHoraInicio)
@@ -121,6 +126,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                     .ThenInclude(v => v.Modelo)
                 .Include(c => c.TipoServicio)
                 .Include(c => c.Sucursal)
+                .Include(c => c.OrdenServicio)
                 .AsNoTracking()
                 .Where(c => c.VehiculoId == vehiculoId && c.Activo)
                 .OrderByDescending(c => c.FechaHoraInicio)
@@ -140,6 +146,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                     .ThenInclude(v => v.Modelo)
                 .Include(c => c.TipoServicio)
                 .Include(c => c.Sucursal)
+                .Include(c => c.OrdenServicio)
                 .AsNoTracking()
                 .Where(c => c.Estado == estado && c.Activo);
 
@@ -164,6 +171,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                     .ThenInclude(v => v.Modelo)
                 .Include(c => c.TipoServicio)
                 .Include(c => c.Sucursal)
+                .Include(c => c.OrdenServicio)
                 .AsNoTracking()
                 .Where(c => c.FechaHoraInicio.Date == fecha.Date &&
                            (c.Estado == EstadoCita.Agendada || c.Estado == EstadoCita.Confirmada) &&
@@ -348,6 +356,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 .ThenInclude(v => v.Modelo)
             .Include(c => c.TipoServicio)
             .Include(c => c.Sucursal)
+            .Include(c => c.OrdenServicio)
             .FirstOrDefaultAsync(c => c.CitaId == dto.CitaId && c.Activo);
 
             if (cita == null)
@@ -468,13 +477,29 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
        public async Task<ApiResponse<bool>> IniciarAtencionAsync(int citaId, string usuarioId)
         {
             var cita = await context.Citas
-           .FirstOrDefaultAsync(c => c.CitaId == citaId && c.Activo);
+                .Include(c => c.TipoServicio)
+                .FirstOrDefaultAsync(c => c.CitaId == citaId && c.Activo);
 
             if (cita == null)
                 return ApiResponse<bool>.fail(404, null, "Cita no encontrada.");
 
             if (!cita.PuedeConvertirseEnOs)
                 return ApiResponse<bool>.fail(400, null, "La cita no está en estado válido para iniciar atención.");
+
+            // Actualizar horario al momento real de inicio
+            var ahora = DateTime.Now;
+            var duracionRestante = cita.Duracion;
+
+            // Si tiene minutos trabajados previos (transferencia), usar duracion restante
+            if (cita.MinutosTrabajados.HasValue && cita.MinutosTrabajados > 0)
+            {
+                var minutosOriginales = cita.TipoServicio.DuracionEstimadaMin;
+                var minutosRestantes = minutosOriginales - cita.MinutosTrabajados.Value;
+                duracionRestante = TimeSpan.FromMinutes(Math.Max(minutosRestantes, 30));
+            }
+
+            cita.FechaHoraInicio = ahora;
+            cita.FechaHoraFin = ahora + duracionRestante;
 
             cita.IniciarProceso();
             cita.UsuarioModificaId = usuarioId;
@@ -483,7 +508,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             await context.SaveChangesAsync();
 
             return ApiResponse<bool>.ok(true, "Atención iniciada. Puede crear la Orden de Servicio.");
-        
+
         }
         public async Task<ApiResponse<bool>> CompletarAsync(int citaId, string usuarioId)
         {
@@ -525,6 +550,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                     .ThenInclude(v => v.Modelo)
                 .Include(c => c.TipoServicio)
                 .Include(c => c.Sucursal)
+                .Include(c => c.OrdenServicio)
                 .FirstOrDefaultAsync(c => c.CitaId == dto.CitaId && c.Activo);
 
             if (cita == null)
@@ -685,6 +711,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 MotivoCancelacion = c.MotivoCancelacion,
                 PreOrdenId = c.PreOrdenId,
                 SucursalId = c.SucursalId,
+                OsId = c.OrdenServicio?.OsId,
                 ClienteNombre = c.Cliente?.NombreCompleto ?? "",
                 ClienteTelefono = c.Cliente?.Telefono,
                 VehiculoDescripcion = c.Vehiculo?.DescripcionCompleta ?? "",
@@ -710,6 +737,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 .ThenInclude(v => v.Modelo)
             .Include(c => c.TipoServicio)
             .Include(c => c.Sucursal)
+            .Include(c => c.OrdenServicio)
             .AsNoTracking()
             .Where(c => c.FechaHoraInicio.Date >= fechaInicio.Date &&
                        c.FechaHoraInicio.Date <= fechaFin.Date &&

@@ -13,18 +13,33 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
     public class EvidenciaService : IEvidenciaService
     {
         private readonly PremierFlowDbContext context;
-        private readonly string _uploadPath;
+        private readonly string _basePath;
 
         public EvidenciaService(PremierFlowDbContext context)
         {
             this.context = context;
-            _uploadPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "evidencias");
+            _basePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "evidencias");
 
-            // Crear directorio si no existe
-            if (!Directory.Exists(_uploadPath))
-            {
-                Directory.CreateDirectory(_uploadPath);
-            }
+            if (!Directory.Exists(_basePath))
+                Directory.CreateDirectory(_basePath);
+        }
+
+        /// <summary>
+        /// Determina la subcarpeta según el tipo de evidencia.
+        /// Estructura: {NumeroOs}/entrada/ o {NumeroOs}/salida/
+        /// </summary>
+        private static string ObtenerSubcarpeta(TipoEvidencia tipo, int? recepcionId)
+        {
+            // Fotos de salida (FotoSalidaFrontal, FotoSalidaTrasera, etc.)
+            if (tipo.ToString().StartsWith("FotoSalida"))
+                return "salida";
+
+            // Fotos con recepción asociada = entrada
+            if (recepcionId.HasValue)
+                return "entrada";
+
+            // Otros (daños adicionales, fotos durante servicio, etc.)
+            return "otros";
         }
 
         public async Task<ApiResponse<EvidenciaDTO>> GetByIdAsync(int evidenciaId)
@@ -190,15 +205,20 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 return ApiResponse<EvidenciaDTO>.fail(400, null, "Formato Base64 inválido.");
             }
 
-            // 4. Generar nombre de archivo único
+            // 4. Construir ruta organizada: {NumeroOs}/{subcarpeta}/{tipo}_{timestamp}_{guid}.ext
             var extension = Path.GetExtension(dto.NombreArchivo);
             if (string.IsNullOrEmpty(extension))
-            {
-                extension = ".jpg";  // Default
-            }
+                extension = ".jpg";
 
-            var nombreArchivo = $"{dto.OsId}_{dto.TipoEvidencia}_{DateTime.UtcNow:yyyyMMddHHmmss}_{Guid.NewGuid().ToString("N")[..6]}{extension}";
-            var rutaCompleta = Path.Combine(_uploadPath, nombreArchivo);
+            var subcarpeta = ObtenerSubcarpeta(dto.TipoEvidencia, dto.RecepcionId);
+            var carpetaOs = os.NumeroOs; // Ej: OS-20260223-0001
+            var nombreArchivo = $"{dto.TipoEvidencia}_{DateTime.Now:HHmmss}_{Guid.NewGuid().ToString("N")[..6]}{extension}";
+
+            // Crear directorios si no existen
+            var carpetaCompleta = Path.Combine(_basePath, carpetaOs, subcarpeta);
+            Directory.CreateDirectory(carpetaCompleta);
+
+            var rutaCompleta = Path.Combine(carpetaCompleta, nombreArchivo);
 
             // 5. Guardar archivo
             try
@@ -210,8 +230,8 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 return ApiResponse<EvidenciaDTO>.fail(500, null, $"Error al guardar el archivo: {ex.Message}");
             }
 
-            // 6. URL relativa para acceso
-            var urlArchivo = $"/uploads/evidencias/{nombreArchivo}";
+            // 6. URL relativa (compatible con cualquier storage futuro)
+            var urlArchivo = $"/uploads/evidencias/{carpetaOs}/{subcarpeta}/{nombreArchivo}";
 
             // 7. Crear evidencia
             var evidencia = new Evidencia

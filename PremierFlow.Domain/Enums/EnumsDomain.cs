@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Text.Json.Serialization;
 
 namespace PremierFlow.Domain.Enums
 {
@@ -142,6 +143,7 @@ namespace PremierFlow.Domain.Enums
     /// <summary>
     /// Tipo de evidencia fotográfica.
     /// </summary>
+    [JsonConverter(typeof(JsonStringEnumConverter))]
     public enum TipoEvidencia
     {
         FotoFrontal = 1,
@@ -151,6 +153,12 @@ namespace PremierFlow.Domain.Enums
         FotoInterior = 5,
         FotoTablero = 6,
         FotoDano = 7,
+        // Fotos de salida/entrega
+        FotoSalidaFrontal = 11,
+        FotoSalidaTrasera = 12,
+        FotoSalidaLateralIzq = 13,
+        FotoSalidaLateralDer = 14,
+        FotoSalidaGeneral = 15,
         Otro = 99
     }
     public enum EstadoVehiculo

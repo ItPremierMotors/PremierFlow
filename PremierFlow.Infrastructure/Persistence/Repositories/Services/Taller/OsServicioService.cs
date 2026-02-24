@@ -62,8 +62,8 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             if (os == null)
                 return ApiResponse<OsServicioDTO>.fail(404, null, "Orden de servicio no encontrada.");
 
-            if (!os.PuedeModificarse)
-                return ApiResponse<OsServicioDTO>.fail(400, null, "La orden de servicio no puede modificarse en su estado actual.");
+            if (os.Estado.Codigo != EstadoOs.Estados.Diagnostico)
+                return ApiResponse<OsServicioDTO>.fail(400, null, "Solo se pueden agregar servicios cuando la OS está en Diagnóstico.");
 
             // 2. Validar tipo de servicio
             var tipoServicio = await context.TiposServicio
@@ -214,6 +214,9 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
 
             if (servicio.Estado != EstadoServicioOS.Pendiente)
                 return ApiResponse<bool>.fail(400, null, "Solo se puede iniciar un servicio pendiente.");
+
+            if (!servicio.TecnicoAsignadoId.HasValue)
+                return ApiResponse<bool>.fail(400, null, "Debe asignar un técnico antes de iniciar el servicio.");
 
             servicio.IniciarTrabajo();
             servicio.UsuarioModificaId = usuarioId;

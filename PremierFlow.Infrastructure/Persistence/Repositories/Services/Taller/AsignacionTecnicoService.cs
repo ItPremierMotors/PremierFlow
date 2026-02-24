@@ -104,7 +104,10 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             if (tecnico == null)
                 return ApiResponse<AsignacionTecnicoDTO>.fail(404, null, "Técnico no encontrado.");
 
-            // 3. Validar servicio si se proporciona
+            // 3. Validar servicio (obligatorio)
+            if (!dto.OsServicioId.HasValue)
+                return ApiResponse<AsignacionTecnicoDTO>.fail(400, null, "Debe seleccionar un servicio.");
+
             OsServicio? osServicio = null;
             if (dto.OsServicioId.HasValue)
             {
@@ -177,6 +180,11 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             if (!asignacion.OrdenServicio.EstaAbierta)
                 return ApiResponse<bool>.fail(400, null, "La orden de servicio no está abierta.");
 
+            // Solo se puede iniciar trabajo si la OS esta en APROBADA o EN_TRABAJO
+            var estadoOs = asignacion.OrdenServicio.Estado.Codigo;
+            if (estadoOs != EstadoOs.Estados.Aprobada && estadoOs != EstadoOs.Estados.EnTrabajo)
+                return ApiResponse<bool>.fail(400, null, "Solo se puede iniciar trabajo cuando la OS está Aprobada o En Trabajo.");
+
             if (asignacion.Estado != EstadoAsignacion.Asignado)
                 return ApiResponse<bool>.fail(400, null, "Solo se puede iniciar una asignación pendiente.");
 
@@ -188,6 +196,18 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             if (asignacion.OsServicio != null && asignacion.OsServicio.Estado == EstadoServicioOS.Pendiente)
             {
                 asignacion.OsServicio.IniciarTrabajo();
+            }
+
+            // Auto-transicionar la OS a EN_TRABAJO si está en APROBADA
+            if (estadoOs == EstadoOs.Estados.Aprobada)
+            {
+                var estadoEnTrabajo = await context.EstadosOs
+                    .FirstOrDefaultAsync(e => e.Codigo == EstadoOs.Estados.EnTrabajo && e.Activo);
+
+                if (estadoEnTrabajo != null)
+                {
+                    asignacion.OrdenServicio.EstadoId = estadoEnTrabajo.EstadoId;
+                }
             }
 
             await context.SaveChangesAsync();

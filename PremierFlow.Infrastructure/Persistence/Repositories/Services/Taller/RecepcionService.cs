@@ -115,7 +115,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             var recepcion = new Recepcion
             {
                 OsId = dto.OsId,
-                FechaHoraRecepcion = DateTime.UtcNow,
+                FechaHoraRecepcion = DateTime.Now,
                 RecibidoPorId = usuarioId,
                 EntregadoPor = dto.EntregadoPor,
                 EstadoCarroceria = dto.EstadoCarroceria,
@@ -307,7 +307,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 CitaId = dto.CitaId,
                 VehiculoId = cita.VehiculoId,
                 ClienteId = cita.ClienteId,
-                FechaApertura = DateTime.UtcNow,
+                FechaApertura = DateTime.Now,
                 EstadoId = estadoAbierta.EstadoId,
                 KilometrajeIngreso = dto.Kilometraje,
                 NivelCombustible = dto.NivelCombustiblePorcentaje / 100m,
@@ -321,11 +321,27 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             };
             context.OrdenesServicio.Add(os);
 
+            // 6b. Agregar servicio de la cita automaticamente
+            var servicioCita = new OsServicio
+            {
+                TipoServicioId = cita.TipoServicioId,
+                DescripcionTrabajo = cita.TipoServicio.Nombre,
+                Estado = EstadoServicioOS.Pendiente,
+                PrecioUnitario = cita.TipoServicio.PrecioBase,
+                Cantidad = 1,
+                Observaciones = cita.MotivoVisita,
+                Activo = true,
+                UsuarioCreaId = usuarioId,
+                FechaCreacion = DateTime.UtcNow
+            };
+            servicioCita.CalcularSubtotal();
+            os.Servicios.Add(servicioCita);
+
             // 7. Crear Recepción con todos los campos del wizard
             var recepcion = new Recepcion
             {
                 OrdenServicio = os,
-                FechaHoraRecepcion = DateTime.UtcNow,
+                FechaHoraRecepcion = DateTime.Now,
                 RecibidoPorId = usuarioId,
                 EntregadoPor = dto.EntregadoPor,
                 EsPropietarioQuienEntrega = dto.EsPropietarioQuienEntrega,

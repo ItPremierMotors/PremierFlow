@@ -1,4 +1,5 @@
 ﻿using PremierFlow.Application.Common;
+using PremierFlow.Application.Dtos.Catalogo;
 using PremierFlow.Application.Dtos.Taller;
 using System;
 using System.Collections.Generic;
@@ -28,5 +29,6 @@ namespace PremierFlow.Application.Interfaces.Taller
         Task<ApiResponse<bool>> CerrarAsync(CerrarOsDTO dto, string usuarioId);
         Task<ApiResponse<bool>> CancelarAsync(int osId, string motivo, string usuarioId);
         Task<ApiResponse<bool>> RecalcularTotalesAsync(int osId);
+        Task<ApiResponse<List<EstadoOsDTO>>> GetTransicionesValidasAsync(int osId);
     }
 }

@@ -173,5 +173,12 @@ namespace PremierFlow.WebAPI.Controllers
             var result = await _osService.RecalcularTotalesAsync(id);
             return StatusCode(result.StatusCode, result);
         }
+
+        [HttpGet("GetTransicionesValidas/{osId}")]
+        public async Task<IActionResult> GetTransicionesValidas(int osId)
+        {
+            var result = await _osService.GetTransicionesValidasAsync(osId);
+            return StatusCode(result.StatusCode, result);
+        }
     }
 }

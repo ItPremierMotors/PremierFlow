@@ -269,7 +269,8 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
                 .Include(v => v.Sucursal)
                 .Include(v => v.Ubicacion)
                 .AsNoTracking()
-                .Where(v => v.ClienteId==clienteId && v.Activo)
+                .Where(v => v.ClienteId==clienteId && v.Activo
+                    && (v.Estado == EstadoVehiculo.Vendido || v.Estado == EstadoVehiculo.Entregado))
                 .ToListAsync();
             var dtos = vehiculos.Select(MapToDto).ToList();
             await ResolverNombresVendedor(dtos);

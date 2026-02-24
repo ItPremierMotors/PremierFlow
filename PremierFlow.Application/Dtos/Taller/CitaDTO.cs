@@ -22,6 +22,7 @@ namespace PremierFlow.Application.Dtos.Taller
         public string? MotivoCancelacion { get; set; }
         public string? PreOrdenId { get; set; }
         public int? SucursalId { get; set; }
+        public int? OsId { get; set; }
         // Extras para UI
         public string ClienteNombre { get; set; } = null!;
         public string? ClienteTelefono { get; set; }

@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using PremierFlow.Application.Common;
+using PremierFlow.Application.Dtos.Catalogo;
 using PremierFlow.Application.Dtos.Taller;
 using PremierFlow.Application.Interfaces.Taller;
 using PremierFlow.Domain.Entities;
@@ -309,7 +310,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 CitaId = dto.CitaId,
                 VehiculoId = cita.VehiculoId,
                 ClienteId = cita.ClienteId,
-                FechaApertura = DateTime.UtcNow,
+                FechaApertura = DateTime.Now,
                 EstadoId = estadoAbierta.EstadoId,
                 KilometrajeIngreso = dto.KilometrajeIngreso,
                 NivelCombustible = dto.NivelCombustible,
@@ -326,10 +327,26 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
 
             context.OrdenesServicio.Add(os);
 
-            // 7. Actualizar kilometraje del vehículo
+            // 7. Agregar servicio de la cita automaticamente
+            var servicioCita = new OsServicio
+            {
+                TipoServicioId = cita.TipoServicioId,
+                DescripcionTrabajo = cita.TipoServicio.Nombre,
+                Estado = EstadoServicioOS.Pendiente,
+                PrecioUnitario = cita.TipoServicio.PrecioBase,
+                Cantidad = 1,
+                Observaciones = cita.MotivoVisita,
+                Activo = true,
+                UsuarioCreaId = usuarioId,
+                FechaCreacion = DateTime.UtcNow
+            };
+            servicioCita.CalcularSubtotal();
+            os.Servicios.Add(servicioCita);
+
+            // 8. Actualizar kilometraje del vehículo
             cita.Vehiculo.ActualizarKilometraje(dto.KilometrajeIngreso);
 
-            // 8. Actualizar estado de la cita
+            // 9. Actualizar estado de la cita
             cita.IniciarProceso();
 
             await context.SaveChangesAsync();
@@ -402,7 +419,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 CitaId = null,  // Walk-in no tiene cita
                 VehiculoId = dto.VehiculoId,
                 ClienteId = dto.ClienteId,
-                FechaApertura = DateTime.UtcNow,
+                FechaApertura = DateTime.Now,
                 EstadoId = estadoAbierta.EstadoId,
                 KilometrajeIngreso = dto.KilometrajeIngreso,
                 NivelCombustible = dto.NivelCombustible,
@@ -579,7 +596,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
 
             os.EstadoId = estadoCancelada.EstadoId;
             os.ObservacionesCierre = motivo;
-            os.FechaCierre = DateTime.UtcNow;
+            os.FechaCierre = DateTime.Now;
             os.UsuarioModificaId = usuarioId;
             os.FechaModificacion = DateTime.UtcNow;
 
@@ -610,6 +627,38 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
         }
 
         #endregion
+
+        public async Task<ApiResponse<List<EstadoOsDTO>>> GetTransicionesValidasAsync(int osId)
+        {
+            var os = await context.OrdenesServicio
+                .Include(o => o.Estado)
+                .FirstOrDefaultAsync(o => o.OsId == osId && o.Activo);
+
+            if (os == null)
+                return ApiResponse<List<EstadoOsDTO>>.fail(404, null, "Orden de servicio no encontrada.");
+
+            var codigosValidos = GetTransicionesValidas(os.Estado.Codigo);
+
+            if (codigosValidos.Length == 0)
+                return ApiResponse<List<EstadoOsDTO>>.ok(new List<EstadoOsDTO>(), "No hay transiciones disponibles.");
+
+            var estados = await context.EstadosOs
+                .Where(e => codigosValidos.Contains(e.Codigo) && e.Activo)
+                .OrderBy(e => e.OrdenSecuencial)
+                .Select(e => new EstadoOsDTO
+                {
+                    EstadoId = e.EstadoId,
+                    Codigo = e.Codigo,
+                    Nombre = e.Nombre,
+                    Descripcion = e.Descripcion,
+                    OrdenSecuencial = e.OrdenSecuencial,
+                    EsEstadoFinal = e.EsEstadoFinal,
+                    PermiteModificacion = e.PermiteModificacion
+                })
+                .ToListAsync();
+
+            return ApiResponse<List<EstadoOsDTO>>.ok(estados);
+        }
 
         #region Helpers
 
