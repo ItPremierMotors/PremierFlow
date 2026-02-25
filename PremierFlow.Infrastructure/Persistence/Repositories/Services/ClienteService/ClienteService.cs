@@ -279,7 +279,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Cliente
                 NoShowCount = c.NoShowCount,
                 NombreCompleto = c.NombreCompleto,
                 TieneAlertaNoShow = c.TieneAlertaNoShow,
-                CantidadVehiculos = c.Vehiculos?.Count(v => v.Activo) ?? 0
+                CantidadVehiculos = c.Vehiculos?.Count(v => v.Activo && v.EstaVendido) ?? 0
             };
         }
 
