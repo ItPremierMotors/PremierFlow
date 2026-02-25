@@ -48,9 +48,9 @@ builder.Services.AddAuthentication(options =>
         options.AddPolicy("AllowSmartAdmin",
             policy => policy
                 .WithOrigins(
-                    "https://localhost:7001",  // Puerto HTTPS de SmartAdmin
-                    "http://localhost:5001" ,   // Puerto HTTP de SmartAdmin,
-                    "https://localhost:7165"
+                    "https://localhost:7003",  // Puerto HTTPS de SmartAdmin
+                    "http://localhost:5003"    // Puerto HTTP de SmartAdmin,
+                    
                 )
                 .AllowAnyMethod()
                 .AllowAnyHeader()
