@@ -18,7 +18,5 @@ namespace PremierFlow.Infrastructure.Identity
         public DateTime FechaCreacion { get; set; } = DateTime.UtcNow;
         public DateTime? UltimoLogin { get; set; }
 
-        //relacion mucho a muchos con sucursales padre es ApplicationUser E hijo UsuarioSucursal
-        public ICollection<UsuarioSucursal> UsuarioSucursales { get; set; } = new List<UsuarioSucursal>();
     }
 }

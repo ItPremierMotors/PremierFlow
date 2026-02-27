@@ -137,6 +137,19 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Catalogo.
             return ApiResponse<TecnicoDTO>.ok(MapToDto(tecnico));   
         }
 
+        public async Task<ApiResponse<TecnicoDTO>> GetByUsuarioIdAsync(string usuarioId)
+        {
+            var tecnico = await context.Tecnicos
+                .Include(t => t.Sucursal)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(t => t.UsuarioId == usuarioId && t.Activo);
+
+            if (tecnico == null)
+                return ApiResponse<TecnicoDTO>.fail(404, null, "No se encontró un técnico vinculado a este usuario.");
+
+            return ApiResponse<TecnicoDTO>.ok(MapToDto(tecnico));
+        }
+
         public async Task<ApiResponse<List<TecnicoDTO>>> GetBySucursalAsync(int sucursalId)
         {
             var tecnicos = await context.Tecnicos

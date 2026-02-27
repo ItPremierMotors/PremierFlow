@@ -22,6 +22,9 @@ namespace PremierFlow.Application.Dtos.Taller
         public string TecnicoNombre { get; set; } = null!;
         public string? TecnicoCodigo { get; set; }
         public string? ServicioDescripcion { get; set; }
+        public int VehiculoId { get; set; }
+        public string? VehiculoDescripcion { get; set; }
+        public string? VehiculoPlaca { get; set; }
         public string EstadoNombre => Estado.ToString();
         public bool EstaActiva { get; set; }
         public int? TiempoTrabajadoMinutos { get; set; }

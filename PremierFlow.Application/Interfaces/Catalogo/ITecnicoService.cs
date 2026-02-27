@@ -9,6 +9,7 @@ namespace PremierFlow.Application.Interfaces.Catalogo
     public interface ITecnicoService
     {
         Task<ApiResponse<TecnicoDTO>> GetByIdAsync(int tecnicoId);
+        Task<ApiResponse<TecnicoDTO>> GetByUsuarioIdAsync(string usuarioId);
         Task<ApiResponse<List<TecnicoDTO>>> GetAllAsync();
         Task<ApiResponse<List<TecnicoDTO>>> GetBySucursalAsync(int sucursalId);  // Filtrar por sucursal
         Task<ApiResponse<List<TecnicoDTO>>> GetDisponiblesAsync(int sucursalId); // Sin OS activa

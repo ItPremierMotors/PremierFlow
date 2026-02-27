@@ -31,6 +31,12 @@ namespace PremierFlow.WebAPI.Controllers
             var result = await _tecnicoService.GetByIdAsync(tecnicoId);
             return StatusCode(result.StatusCode, result);
         }
+        [HttpGet("GetByUsuarioId/{usuarioId}")]
+        public async Task<IActionResult> GetByUsuarioId(string usuarioId)
+        {
+            var result = await _tecnicoService.GetByUsuarioIdAsync(usuarioId);
+            return StatusCode(result.StatusCode, result);
+        }
         [HttpGet("GetBySucursal/{sucursalId}")]
         public async Task<IActionResult> GetBySucursal(int sucursalId)
         {

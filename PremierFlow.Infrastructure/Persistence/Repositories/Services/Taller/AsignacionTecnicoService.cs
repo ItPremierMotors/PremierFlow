@@ -22,7 +22,8 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
         public async Task<ApiResponse<AsignacionTecnicoDTO>> GetByIdAsync(int asignacionId)
         {
             var asignacion = await context.AsignacionesTecnico
-                .Include(a => a.OrdenServicio)
+                .Include(a => a.OrdenServicio).ThenInclude(o => o.Vehiculo).ThenInclude(v => v.Marca)
+                .Include(a => a.OrdenServicio).ThenInclude(o => o.Vehiculo).ThenInclude(v => v.Modelo)
                 .Include(a => a.Tecnico)
                 .Include(a => a.OsServicio)
                 .AsNoTracking()
@@ -37,7 +38,8 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
         public async Task<ApiResponse<List<AsignacionTecnicoDTO>>> GetByOsIdAsync(int osId)
         {
             var asignaciones = await context.AsignacionesTecnico
-                .Include(a => a.OrdenServicio)
+                .Include(a => a.OrdenServicio).ThenInclude(o => o.Vehiculo).ThenInclude(v => v.Marca)
+                .Include(a => a.OrdenServicio).ThenInclude(o => o.Vehiculo).ThenInclude(v => v.Modelo)
                 .Include(a => a.Tecnico)
                 .Include(a => a.OsServicio)
                 .AsNoTracking()
@@ -53,7 +55,8 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
         public async Task<ApiResponse<List<AsignacionTecnicoDTO>>> GetByTecnicoIdAsync(int tecnicoId)
         {
             var asignaciones = await context.AsignacionesTecnico
-                .Include(a => a.OrdenServicio)
+                .Include(a => a.OrdenServicio).ThenInclude(o => o.Vehiculo).ThenInclude(v => v.Marca)
+                .Include(a => a.OrdenServicio).ThenInclude(o => o.Vehiculo).ThenInclude(v => v.Modelo)
                 .Include(a => a.Tecnico)
                 .Include(a => a.OsServicio)
                 .AsNoTracking()
@@ -69,13 +72,14 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
         public async Task<ApiResponse<List<AsignacionTecnicoDTO>>> GetActivasByTecnicoIdAsync(int tecnicoId)
         {
             var asignaciones = await context.AsignacionesTecnico
-                .Include(a => a.OrdenServicio)
+                .Include(a => a.OrdenServicio).ThenInclude(o => o.Vehiculo).ThenInclude(v => v.Marca)
+                .Include(a => a.OrdenServicio).ThenInclude(o => o.Vehiculo).ThenInclude(v => v.Modelo)
                 .Include(a => a.Tecnico)
                 .Include(a => a.OsServicio)
                 .AsNoTracking()
                 .Where(a => a.TecnicoId == tecnicoId &&
                            a.Activo &&
-                           (a.Estado == EstadoAsignacion.Asignado || a.Estado == EstadoAsignacion.EnProceso))
+                           (a.Estado == EstadoAsignacion.Asignado || a.Estado == EstadoAsignacion.EnProceso || a.Estado == EstadoAsignacion.Pausado))
                 .OrderBy(a => a.FechaAsignacion)
                 .ToListAsync();
 
@@ -411,6 +415,11 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 Estado = a.Estado,
                 Observaciones = a.Observaciones,
                 NumeroOs = a.OrdenServicio?.NumeroOs ?? "",
+                VehiculoId = a.OrdenServicio?.VehiculoId ?? 0,
+                VehiculoDescripcion = a.OrdenServicio?.Vehiculo != null
+                    ? $"{a.OrdenServicio.Vehiculo.Marca?.Nombre} {a.OrdenServicio.Vehiculo.Modelo?.Nombre} {a.OrdenServicio.Vehiculo.Anio}".Trim()
+                    : null,
+                VehiculoPlaca = a.OrdenServicio?.Vehiculo?.Placa,
                 TecnicoNombre = a.Tecnico != null
                     ? $"{a.Tecnico.Nombre} {a.Tecnico.Apellidos}"
                     : "",

@@ -14,8 +14,6 @@ namespace PremierFlow.Infrastructure.Persistence
 
         public DbSet<Sucursal> Sucursales { get; set; } = null!;
         public DbSet<Ubicacion> Ubicaciones { get; set; } = null!;
-        public DbSet<UsuarioSucursal> UsuarioSucursales { get; set; } = null!;
-
         #endregion
 
         #region Catálogos de Vehículos
@@ -61,25 +59,6 @@ namespace PremierFlow.Infrastructure.Persistence
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
-            // ==========================================
-            // Configuración de Identity (UsuarioSucursal)
-            // ==========================================
-
-            // Configurar la relación muchos a muchos entre ApplicationUser y Sucursal
-
-            //clave compuesta para TABLA INTERMEDIA UsuarioSucursal
-            builder.Entity<UsuarioSucursal>()
-                .HasKey(us => new { us.UsuarioID, us.SucursalID });
-
-            builder.Entity<UsuarioSucursal>()
-                 .HasOne(us => us.Usuario)
-                 .WithMany(u => u.UsuarioSucursales)
-                 .HasForeignKey(us => us.UsuarioID);
-
-            builder.Entity<UsuarioSucursal>()
-                .HasOne(us => us.Sucursal)
-                .WithMany()
-                .HasForeignKey(us => us.SucursalID);
             // ==========================================
             // Aplicar todas las configuraciones del ensamblado
             // ==========================================
