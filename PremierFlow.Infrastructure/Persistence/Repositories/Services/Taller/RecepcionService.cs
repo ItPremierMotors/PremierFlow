@@ -115,7 +115,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             var recepcion = new Recepcion
             {
                 OsId = dto.OsId,
-                FechaHoraRecepcion = DateTime.Now,
+                FechaHoraRecepcion = DateTime.UtcNow,
                 RecibidoPorId = usuarioId,
                 EntregadoPor = dto.EntregadoPor,
                 EstadoCarroceria = dto.EstadoCarroceria,
@@ -307,12 +307,12 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 CitaId = dto.CitaId,
                 VehiculoId = cita.VehiculoId,
                 ClienteId = cita.ClienteId,
-                FechaApertura = DateTime.Now,
+                FechaApertura = DateTime.UtcNow,
                 EstadoId = estadoAbierta.EstadoId,
                 KilometrajeIngreso = dto.Kilometraje,
                 NivelCombustible = dto.NivelCombustiblePorcentaje / 100m,
-                TipoIngreso = cita.TipoIngreso,
-                EsGarantia = cita.TipoIngreso == TipoIngreso.Garantia,
+                TipoIngreso = TipoIngreso.Cita,
+                EsGarantia = false,
                 ObservacionesApertura = dto.ObservacionesApertura,
                 SucursalId = cita.SucursalId,
                 Activo = true,
@@ -341,7 +341,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             var recepcion = new Recepcion
             {
                 OrdenServicio = os,
-                FechaHoraRecepcion = DateTime.Now,
+                FechaHoraRecepcion = DateTime.UtcNow,
                 RecibidoPorId = usuarioId,
                 EntregadoPor = dto.EntregadoPor,
                 EsPropietarioQuienEntrega = dto.EsPropietarioQuienEntrega,
@@ -400,7 +400,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
 
         private async Task<string> GenerarNumeroOsAsync()
         {
-            var fecha = DateTime.Now;
+            var fecha = DateTime.UtcNow;
             var prefijo = $"OS-{fecha:yyyyMMdd}-";
 
             var ultimaOs = await context.OrdenesServicio

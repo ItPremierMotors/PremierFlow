@@ -64,6 +64,11 @@ namespace PremierFlow.Domain.Entities
         public decimal TotalGeneral { get; set; } = 0;
         public int? SucursalId { get; set; }
 
+        /// <summary>
+        /// Recomendación de próxima revisión (se establece al cerrar la OS).
+        /// </summary>
+        public string? ProximaRevision { get; set; }
+
         // Navegación
         public virtual Cita? Cita { get; set; }
         public virtual Vehiculo Vehiculo { get; set; } = null!;
@@ -74,7 +79,6 @@ namespace PremierFlow.Domain.Entities
         public virtual ICollection<OsServicio> Servicios { get; set; } = new List<OsServicio>();
         public virtual ICollection<Evidencia> Evidencias { get; set; } = new List<Evidencia>();
         public virtual ICollection<AsignacionTecnico> AsignacionesTecnico { get; set; } = new List<AsignacionTecnico>();
-        public virtual ICollection<HistorialAts> HistorialAts { get; set; } = new List<HistorialAts>();
 
         // Métodos de dominio
         public bool EsWalkIn => TipoIngreso == TipoIngreso.WalkIn;

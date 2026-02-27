@@ -55,7 +55,6 @@ namespace PremierFlow.Infrastructure.Persistence
         public DbSet<Evidencia> Evidencias { get; set; } = null!;
         public DbSet<OsServicio> OsServicios { get; set; } = null!;
         public DbSet<AsignacionTecnico> AsignacionesTecnico { get; set; } = null!;
-        public DbSet<HistorialAts> HistorialAts { get; set; } = null!;
 
         #endregion
 

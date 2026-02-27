@@ -179,7 +179,6 @@ namespace PremierFlow.Infrastructure.Configurations
             builder.Property(e => e.FechaHoraInicio).HasColumnName("fecha_hora_inicio").IsRequired();
             builder.Property(e => e.FechaHoraFin).HasColumnName("fecha_hora_fin").IsRequired();
             builder.Property(e => e.Estado).HasColumnName("estado").HasConversion<string>().HasMaxLength(20);
-            builder.Property(e => e.TipoIngreso).HasColumnName("tipo_ingreso").HasConversion<string>().HasMaxLength(20);
             builder.Property(e => e.MotivoVisita).HasColumnName("motivo_visita").HasColumnType("nvarchar(2000)").IsRequired();
             builder.Property(e => e.Observaciones).HasColumnName("observaciones").HasColumnType("nvarchar(2000)");
             builder.Property(e => e.MotivoCancelacion).HasColumnName("motivo_cancelacion").HasColumnType("nvarchar(2000)");

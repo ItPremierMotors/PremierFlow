@@ -26,7 +26,7 @@ namespace PremierFlow.Application.Interfaces.Taller
         Task<ApiResponse<OrdenServicioDTO>> CreateWalkInAsync(CreateOsWalkInDTO dto, string usuarioId);
         Task<ApiResponse<OrdenServicioDTO>> UpdateAsync(UpdateOrdenServicioDTO dto, string usuarioId);
         Task<ApiResponse<bool>> CambiarEstadoAsync(CambiarEstadoOsDTO dto, string usuarioId);
-        Task<ApiResponse<bool>> CerrarAsync(CerrarOsDTO dto, string usuarioId);
+        Task<ApiResponse<int?>> CerrarAsync(CerrarOsDTO dto, string usuarioId);
         Task<ApiResponse<bool>> CancelarAsync(int osId, string motivo, string usuarioId);
         Task<ApiResponse<bool>> RecalcularTotalesAsync(int osId);
         Task<ApiResponse<List<EstadoOsDTO>>> GetTransicionesValidasAsync(int osId);

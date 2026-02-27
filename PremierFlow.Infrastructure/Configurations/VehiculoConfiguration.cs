@@ -73,8 +73,6 @@ public class VehiculoConfiguration : IEntityTypeConfiguration<Vehiculo>
             builder.Property(v => v.UbicacionId)
                 .HasColumnName("ubicacion_id");
 
-            builder.Property(v => v.SucursalId)
-                .HasColumnName("sucursal_id");
 
             #endregion
 
@@ -218,10 +216,6 @@ public class VehiculoConfiguration : IEntityTypeConfiguration<Vehiculo>
                 .HasForeignKey(v => v.UbicacionId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            builder.HasOne(v => v.Sucursal)
-                .WithMany()
-                .HasForeignKey(v => v.SucursalId)
-                .OnDelete(DeleteBehavior.Restrict);
 
             #endregion
 
@@ -243,8 +237,6 @@ public class VehiculoConfiguration : IEntityTypeConfiguration<Vehiculo>
             builder.HasIndex(v => v.MarcaId)
                 .HasDatabaseName("ix_vehiculos_marca_id");
 
-            builder.HasIndex(v => v.SucursalId)
-                .HasDatabaseName("ix_vehiculos_sucursal_id");
 
             #endregion
 

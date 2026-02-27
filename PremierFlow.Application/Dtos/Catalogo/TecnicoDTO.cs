@@ -28,6 +28,10 @@ namespace PremierFlow.Application.Dtos.Catalogo
         public int? BahiaAsignada { get; set; }
         public string? UsuarioId { get; set; }
         public int? SucursalId { get; set; }
+
+        // Cuenta de acceso (opcional)
+        public string? Email { get; set; }
+        public string? Password { get; set; }
     }
     public class UpdateTecnicoDTO
     {

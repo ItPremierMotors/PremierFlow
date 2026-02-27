@@ -6,9 +6,7 @@ using PremierFlow.Application.Interfaces.Vehiculo;
 using PremierFlow.Domain.Entities;
 using PremierFlow.Domain.Enums;
 using PremierFlow.Infrastructure.Identity;
-using System;
-using System.Collections.Generic;
-using System.Text;
+
 
 namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoService
 {
@@ -43,11 +41,6 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
             return ApiResponse<bool>.ok(true, $"Kilometraje actualizado a {nuevoKm} km.");
         }
 
-//        ### Transiciones válidas:
-//```
-//EnTransito → EnAduana → EnBodega → EnExhibicion → Reservado → Vendido → Entregado
-//                ↓            ↓           ↓
-//              EnBodega EnBodega    EnExhibicion(si cancela reserva)
         public async Task<ApiResponse<bool>> CambiarEstadoAsync(int vehiculoId, EstadoVehiculo nuevoEstado, string usuarioId, int? clienteId = null, string? vendedorId = null)
         {
             var vehiculo = await context.Vehiculos
@@ -167,7 +160,6 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
                 Color = dto.Color,
                 Estado = dto.Estado,
                 UbicacionId = dto.UbicacionId,
-                SucursalId = dto.SucursalId,
                 Procedencia = dto.Procedencia,
                 NumeroImportacion = dto.NumeroImportacion,
                 NumeroPoliza = dto.NumeroPoliza,
@@ -195,10 +187,12 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
                 await context.Entry(vehiculo).Reference(v => v.Cliente).LoadAsync();
             if (vehiculo.VersionId.HasValue)
                 await context.Entry(vehiculo).Reference(v => v.Version).LoadAsync();
-            if (vehiculo.SucursalId.HasValue)
-                await context.Entry(vehiculo).Reference(v => v.Sucursal).LoadAsync();
             if (vehiculo.UbicacionId.HasValue)
+            {
                 await context.Entry(vehiculo).Reference(v => v.Ubicacion).LoadAsync();
+                if (vehiculo.Ubicacion?.SucursalID != null)
+                    await context.Entry(vehiculo.Ubicacion).Reference(u => u.Sucursal).LoadAsync();
+            }
             return ApiResponse<VehiculoDTO>.ok(MapToDto(vehiculo), "Vehículo creado exitosamente.");
         }
 
@@ -248,8 +242,8 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
                 .Include(v => v.Marca)
                 .Include(v => v.Modelo)
                 .Include(v => v.Version)
-                .Include(v => v.Sucursal)
                 .Include(v => v.Ubicacion)
+                    .ThenInclude(u => u!.Sucursal)
                 .AsNoTracking()
                 .Where(v => v.Activo)
                 .ToListAsync();
@@ -266,8 +260,8 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
                 .Include(v => v.Marca)
                 .Include(v => v.Modelo)
                 .Include(v => v.Version)
-                .Include(v => v.Sucursal)
                 .Include(v => v.Ubicacion)
+                    .ThenInclude(u => u!.Sucursal)
                 .AsNoTracking()
                 .Where(v => v.ClienteId==clienteId && v.Activo
                     && (v.Estado == EstadoVehiculo.Vendido || v.Estado == EstadoVehiculo.Entregado))
@@ -285,8 +279,8 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
                 .Include(v => v.Marca)
                 .Include(v => v.Modelo)
                 .Include(v => v.Version)
-                .Include(v => v.Sucursal)
                 .Include(v => v.Ubicacion)
+                    .ThenInclude(u => u!.Sucursal)
                 .AsNoTracking()
                 .Where(v => v.Estado == estado && v.Activo)
                 .ToListAsync();
@@ -303,8 +297,8 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
             .Include(v => v.Marca)
             .Include(v => v.Modelo)
             .Include(v => v.Version)
-            .Include(v => v.Sucursal)
             .Include(v => v.Ubicacion)
+                .ThenInclude(u => u!.Sucursal)
             .AsNoTracking()
             .FirstOrDefaultAsync(v => v.VehiculoId == vehiculoId && v.Activo);
 
@@ -321,8 +315,8 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
            .Include(v => v.Marca)
            .Include(v => v.Modelo)
            .Include(v => v.Version)
-           .Include(v => v.Sucursal)
            .Include(v => v.Ubicacion)
+               .ThenInclude(u => u!.Sucursal)
            .AsNoTracking()
            .FirstOrDefaultAsync(v => v.Placa == placa && v.Activo);
 
@@ -339,10 +333,10 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
             .Include(v => v.Marca)
             .Include(v => v.Modelo)
             .Include(v => v.Version)
-            .Include(v => v.Sucursal)
             .Include(v => v.Ubicacion)
+                .ThenInclude(u => u!.Sucursal)
             .AsNoTracking()
-            .Where(v => v.SucursalId == sucursalId && v.Activo)
+            .Where(v => v.Ubicacion != null && v.Ubicacion.SucursalID == sucursalId && v.Activo)
             .ToListAsync();
 
             var dtos = vehiculos.Select(MapToDto).ToList();
@@ -358,8 +352,8 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
             .Include(v => v.Marca)
             .Include(v => v.Modelo)
             .Include(v => v.Version)
-            .Include(v => v.Sucursal)
             .Include(v => v.Ubicacion)
+                .ThenInclude(u => u!.Sucursal)
             .AsNoTracking()
             .FirstOrDefaultAsync(v => v.Vin == vin && v.Activo);
 
@@ -377,8 +371,8 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
             .Include(v => v.Modelo)
             .Include(v => v.Version)
             .Include(v => v.Ubicacion)
-            .Include(v => v.Sucursal)
-            .Include(v => v.HistorialAts.Where(h => h.Activo))
+                .ThenInclude(u => u!.Sucursal)
+            .Include(v => v.OrdenesServicio)
             .AsNoTracking()
             .FirstOrDefaultAsync(v => v.VehiculoId == vehiculoId && v.Activo);
 
@@ -430,8 +424,8 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
                 .Include(v => v.Marca)
                 .Include(v => v.Modelo)
                 .Include(v => v.Version)
-                .Include(v => v.Sucursal)
                 .Include(v => v.Ubicacion)
+                    .ThenInclude(u => u!.Sucursal)
                 .AsNoTracking()
                 .Where(v => v.Activo &&
                            (v.Vin.ToLower().Contains(termLower) ||
@@ -456,8 +450,8 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
                 .Include(v=> v.Marca)
                 .Include(v=> v.Modelo)
                 .Include(v=> v.Version)
-                .Include(v => v.Sucursal)
                 .Include(v => v.Ubicacion)
+                    .ThenInclude(u => u!.Sucursal)
                 .FirstOrDefaultAsync(v => v.VehiculoId == dto.VehiculoId && v.Activo);
             if (vehiculo == null)
             {
@@ -512,7 +506,6 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
             vehiculo.Color = dto.Color;
             vehiculo.Estado = dto.Estado;
             vehiculo.UbicacionId = dto.UbicacionId;
-            vehiculo.SucursalId = dto.SucursalId;
             vehiculo.Procedencia = dto.Procedencia;
             vehiculo.NumeroImportacion = dto.NumeroImportacion;
             vehiculo.NumeroPoliza = dto.NumeroPoliza;
@@ -537,10 +530,12 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
             // Recargar navegaciones
             await context.Entry(vehiculo).Reference(v => v.Marca).LoadAsync();
             await context.Entry(vehiculo).Reference(v => v.Modelo).LoadAsync();
-            if (vehiculo.SucursalId.HasValue)
-                await context.Entry(vehiculo).Reference(v => v.Sucursal).LoadAsync();
             if (vehiculo.UbicacionId.HasValue)
+            {
                 await context.Entry(vehiculo).Reference(v => v.Ubicacion).LoadAsync();
+                if (vehiculo.Ubicacion?.SucursalID != null)
+                    await context.Entry(vehiculo.Ubicacion).Reference(u => u.Sucursal).LoadAsync();
+            }
 
             return ApiResponse<VehiculoDTO>.ok(MapToDto(vehiculo), "Vehículo actualizado exitosamente.");
         }
@@ -663,7 +658,6 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
                     Color = dto.Color,
                     Estado = dto.Estado,
                     UbicacionId = dto.UbicacionId,
-                    SucursalId = dto.SucursalId,
                     Procedencia = dto.Procedencia,
                     NumeroImportacion = dto.NumeroImportacion,
                     NumeroPoliza = dto.NumeroPoliza,
@@ -787,9 +781,8 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
                 EnGarantia = v.EnGarantia,
                 EstaVendido = v.EstaVendido,
                 DisponibleParaVenta = v.DisponibleParaVenta,
-                SucursalId = v.SucursalId,
                 UbicacionId = v.UbicacionId,
-                SucursalNombre = v.Sucursal?.Nombre,
+                SucursalNombre = v.Ubicacion?.Sucursal?.Nombre,
                 UbicacionNombre = v.Ubicacion?.Nombre,
                 FechaLimiteReserva = v.FechaLimiteReserva
             };
@@ -811,7 +804,6 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
                 Color = v.Color,
                 Estado = v.Estado,
                 UbicacionId = v.UbicacionId,
-                SucursalId = v.SucursalId,
                 Procedencia = v.Procedencia,
                 NumeroImportacion = v.NumeroImportacion,
                 NumeroPoliza = v.NumeroPoliza,
@@ -834,13 +826,13 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
                 ModeloNombre = v.Modelo?.Nombre ?? "",
                 VersionNombre = v.Version?.Nombre,
                 UbicacionNombre = v.Ubicacion?.Nombre,
-                SucursalNombre = v.Sucursal?.Nombre,
+                SucursalNombre = v.Ubicacion?.Sucursal?.Nombre,
                 Identificador = v.Identificador,
                 DescripcionCompleta = v.DescripcionCompleta,
                 EnGarantia = v.EnGarantia,
                 EstaVendido = v.EstaVendido,
                 DisponibleParaVenta = v.DisponibleParaVenta,
-                CantidadServicios = v.HistorialAts?.Count ?? 0,
+                CantidadServicios = v.OrdenesServicio?.Count ?? 0,
                 ReservadoPorId = v.ReservadoPorId,
                 FechaReserva = v.FechaReserva,
                 FechaLimiteReserva = v.FechaLimiteReserva
@@ -859,22 +851,26 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
                 if (!vehiculo.FechaIngresoPais.HasValue) faltantes.Add("Fecha de ingreso al país");
                 if (!vehiculo.FechaRecepcion.HasValue) faltantes.Add("Fecha de recepción");
                 if (!vehiculo.PrecioLista.HasValue || vehiculo.PrecioLista <= 0) faltantes.Add("Precio de lista");
-                if (!vehiculo.SucursalId.HasValue) faltantes.Add("Sucursal");
+                if (!vehiculo.UbicacionId.HasValue) faltantes.Add("Ubicación");
             }
 
             switch (nuevoEstado)
             {
+                case EstadoVehiculo.EnAduana:
+                    if (!vehiculo.UbicacionId.HasValue) faltantes.Add("Ubicación");
+                    break;
+
                 case EstadoVehiculo.EnBodega:
+                    if (!vehiculo.UbicacionId.HasValue) faltantes.Add("Ubicación");
                     if (vehiculo.Estado != EstadoVehiculo.EnAduana)
                     {
-                        if (!vehiculo.SucursalId.HasValue) faltantes.Add("Sucursal");
                         if (!vehiculo.FechaRecepcion.HasValue) faltantes.Add("Fecha de recepción");
                         if (!vehiculo.PrecioLista.HasValue || vehiculo.PrecioLista <= 0) faltantes.Add("Precio de lista");
                     }
                     break;
 
                 case EstadoVehiculo.EnExhibicion:
-                    if (!vehiculo.SucursalId.HasValue) faltantes.Add("Sucursal");
+                    if (!vehiculo.UbicacionId.HasValue) faltantes.Add("Ubicación");
                     if (!vehiculo.PrecioLista.HasValue || vehiculo.PrecioLista <= 0) faltantes.Add("Precio de lista");
                     if (!vehiculo.GarantiaHasta.HasValue) faltantes.Add("Garantía hasta");
                     if (string.IsNullOrEmpty(vehiculo.Color)) faltantes.Add("Color");

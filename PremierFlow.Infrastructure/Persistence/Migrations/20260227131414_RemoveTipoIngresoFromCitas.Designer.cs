@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PremierFlow.Infrastructure.Persistence;
 
@@ -11,9 +12,11 @@ using PremierFlow.Infrastructure.Persistence;
 namespace PremierFlow.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(PremierFlowDbContext))]
-    partial class PremierFlowDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260227131414_RemoveTipoIngresoFromCitas")]
+    partial class RemoveTipoIngresoFromCitas
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -899,6 +902,95 @@ namespace PremierFlow.Infrastructure.Persistence.Migrations
                     b.ToTable("evidencias", (string)null);
                 });
 
+            modelBuilder.Entity("PremierFlow.Domain.Entities.HistorialAts", b =>
+                {
+                    b.Property<int>("AtsId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("ats_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("AtsId"));
+
+                    b.Property<bool>("Activo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true)
+                        .HasColumnName("activo");
+
+                    b.Property<DateTime>("FechaCreacion")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("fecha_creacion");
+
+                    b.Property<DateTime?>("FechaModificacion")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("fecha_modificacion");
+
+                    b.Property<DateTime>("FechaRegistro")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("fecha_registro");
+
+                    b.Property<DateTime>("FechaServicio")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("fecha_servicio");
+
+                    b.Property<int>("Kilometraje")
+                        .HasColumnType("int")
+                        .HasColumnName("kilometraje");
+
+                    b.Property<decimal>("MontoTotal")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("decimal(10,2)")
+                        .HasColumnName("monto_total");
+
+                    b.Property<string>("ObservacionesTecnicas")
+                        .HasColumnType("nvarchar(2000)")
+                        .HasColumnName("observaciones_tecnicas");
+
+                    b.Property<int>("OsId")
+                        .HasColumnType("int")
+                        .HasColumnName("os_id");
+
+                    b.Property<string>("ProximaRevision")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("proxima_revision");
+
+                    b.Property<string>("TipoServicio")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("tipo_servicio");
+
+                    b.Property<string>("TrabajosRealizados")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(2000)")
+                        .HasColumnName("trabajos_realizados");
+
+                    b.Property<string>("UsuarioCreaId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("usuario_crea_id");
+
+                    b.Property<string>("UsuarioModificaId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("usuario_modifica_id");
+
+                    b.Property<int>("VehiculoId")
+                        .HasColumnType("int")
+                        .HasColumnName("vehiculo_id");
+
+                    b.HasKey("AtsId");
+
+                    b.HasIndex("OsId");
+
+                    b.HasIndex("VehiculoId");
+
+                    b.HasIndex("VehiculoId", "FechaServicio");
+
+                    b.ToTable("historial_ats", (string)null);
+                });
+
             modelBuilder.Entity("PremierFlow.Domain.Entities.Marca", b =>
                 {
                     b.Property<int>("MarcaId")
@@ -1135,11 +1227,6 @@ namespace PremierFlow.Infrastructure.Persistence.Migrations
                     b.Property<string>("ObservacionesCierre")
                         .HasColumnType("nvarchar(2000)")
                         .HasColumnName("observaciones_cierre");
-
-                    b.Property<string>("ProximaRevision")
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)")
-                        .HasColumnName("proxima_revision");
 
                     b.Property<int?>("SucursalId")
                         .HasColumnType("int")
@@ -2371,6 +2458,25 @@ namespace PremierFlow.Infrastructure.Persistence.Migrations
                     b.Navigation("Recepcion");
                 });
 
+            modelBuilder.Entity("PremierFlow.Domain.Entities.HistorialAts", b =>
+                {
+                    b.HasOne("PremierFlow.Domain.Entities.OrdenServicio", "OrdenServicio")
+                        .WithMany("HistorialAts")
+                        .HasForeignKey("OsId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PremierFlow.Domain.Entities.Vehiculo", "Vehiculo")
+                        .WithMany("HistorialAts")
+                        .HasForeignKey("VehiculoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("OrdenServicio");
+
+                    b.Navigation("Vehiculo");
+                });
+
             modelBuilder.Entity("PremierFlow.Domain.Entities.Modelo", b =>
                 {
                     b.HasOne("PremierFlow.Domain.Entities.Marca", "Marca")
@@ -2594,6 +2700,8 @@ namespace PremierFlow.Infrastructure.Persistence.Migrations
 
                     b.Navigation("Evidencias");
 
+                    b.Navigation("HistorialAts");
+
                     b.Navigation("Recepcion");
 
                     b.Navigation("Servicios");
@@ -2636,6 +2744,8 @@ namespace PremierFlow.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("PremierFlow.Domain.Entities.Vehiculo", b =>
                 {
                     b.Navigation("Citas");
+
+                    b.Navigation("HistorialAts");
 
                     b.Navigation("OrdenesServicio");
                 });

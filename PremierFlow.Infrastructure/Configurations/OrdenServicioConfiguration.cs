@@ -35,6 +35,7 @@ namespace PremierFlow.Infrastructure.Configurations
             builder.Property(e => e.TotalRepuestos).HasColumnName("total_repuestos").HasPrecision(10, 2).HasDefaultValue(0);
             builder.Property(e => e.TotalGeneral).HasColumnName("total_general").HasPrecision(10, 2).HasDefaultValue(0);
             builder.Property(e => e.SucursalId).HasColumnName("sucursal_id");
+            builder.Property(e => e.ProximaRevision).HasColumnName("proxima_revision").HasMaxLength(200);
             builder.Property(e => e.UsuarioCreaId).HasColumnName("usuario_crea_id").HasMaxLength(450);
             builder.Property(e => e.FechaCreacion).HasColumnName("fecha_creacion");
             builder.Property(e => e.UsuarioModificaId).HasColumnName("usuario_modifica_id").HasMaxLength(450);
@@ -223,37 +224,6 @@ namespace PremierFlow.Infrastructure.Configurations
             builder.HasIndex(e => e.TecnicoId);
             builder.Ignore(e => e.EstaActiva);
             builder.Ignore(e => e.TiempoTrabajado);
-        }
-    }
-
-    public class HistorialAtsConfiguration : IEntityTypeConfiguration<HistorialAts>
-    {
-        public void Configure(EntityTypeBuilder<HistorialAts> builder)
-        {
-            builder.ToTable("historial_ats");
-            builder.HasKey(e => e.AtsId);
-            builder.Property(e => e.AtsId).HasColumnName("ats_id");
-            builder.Property(e => e.VehiculoId).HasColumnName("vehiculo_id").IsRequired();
-            builder.Property(e => e.OsId).HasColumnName("os_id").IsRequired();
-            builder.Property(e => e.FechaServicio).HasColumnName("fecha_servicio").IsRequired();
-            builder.Property(e => e.TipoServicio).HasColumnName("tipo_servicio").HasMaxLength(200).IsRequired();
-            builder.Property(e => e.Kilometraje).HasColumnName("kilometraje").IsRequired();
-            builder.Property(e => e.TrabajosRealizados).HasColumnName("trabajos_realizados").HasColumnType("nvarchar(2000)").IsRequired();
-            builder.Property(e => e.MontoTotal).HasColumnName("monto_total").HasPrecision(10, 2);
-            builder.Property(e => e.ObservacionesTecnicas).HasColumnName("observaciones_tecnicas").HasColumnType("nvarchar(2000)");
-            builder.Property(e => e.ProximaRevision).HasColumnName("proxima_revision").HasMaxLength(200);
-            builder.Property(e => e.FechaRegistro).HasColumnName("fecha_registro");
-            builder.Property(e => e.UsuarioCreaId).HasColumnName("usuario_crea_id").HasMaxLength(450);
-            builder.Property(e => e.FechaCreacion).HasColumnName("fecha_creacion");
-            builder.Property(e => e.UsuarioModificaId).HasColumnName("usuario_modifica_id").HasMaxLength(450);
-            builder.Property(e => e.FechaModificacion).HasColumnName("fecha_modificacion");
-            builder.Property(e => e.Activo).HasColumnName("activo").HasDefaultValue(true);
-
-            builder.HasOne(e => e.Vehiculo).WithMany(v => v.HistorialAts).HasForeignKey(e => e.VehiculoId).OnDelete(DeleteBehavior.Restrict);
-            builder.HasOne(e => e.OrdenServicio).WithMany(o => o.HistorialAts).HasForeignKey(e => e.OsId).OnDelete(DeleteBehavior.Restrict);
-            builder.HasIndex(e => e.VehiculoId);
-            builder.HasIndex(e => new { e.VehiculoId, e.FechaServicio });
-            builder.Ignore(e => e.TieneRecomendacionPendiente);
         }
     }
 

@@ -30,8 +30,6 @@ namespace PremierFlow.Domain.Entities
 
         public EstadoCita Estado { get; set; } = EstadoCita.Agendada;
 
-        public TipoIngreso TipoIngreso { get; set; } = TipoIngreso.Cita;
-
         public string MotivoVisita { get; set; } = null!;
 
         public string? Observaciones { get; set; }

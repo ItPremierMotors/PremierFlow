@@ -50,11 +50,6 @@ namespace PremierFlow.Domain.Entities
         /// </summary>
         public int? UbicacionId { get; set; }
 
-        /// <summary>
-        /// Sucursal responsable del vehículo (para filtros y permisos).
-        /// </summary>
-        public int? SucursalId { get; set; }
-
         #endregion
 
         #region Operaciones (Importación)
@@ -173,12 +168,10 @@ namespace PremierFlow.Domain.Entities
         public virtual VersionVehiculo? Version { get; set; }
         public virtual Cliente? Cliente { get; set; }
         public virtual Ubicacion? Ubicacion { get; set; }
-        public virtual Sucursal? Sucursal { get; set; }
 
         // Relaciones con Taller
         public virtual ICollection<Cita> Citas { get; set; } = new List<Cita>();
         public virtual ICollection<OrdenServicio> OrdenesServicio { get; set; } = new List<OrdenServicio>();
-        public virtual ICollection<HistorialAts> HistorialAts { get; set; } = new List<HistorialAts>();
 
         #endregion
 

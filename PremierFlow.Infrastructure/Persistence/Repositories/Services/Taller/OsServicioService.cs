@@ -247,9 +247,34 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             servicio.UsuarioModificaId = usuarioId;
             servicio.FechaModificacion = DateTime.UtcNow;
 
+            // Verificar si TODOS los servicios activos de la OS están completados/cancelados
+            var todosServicios = await context.OsServicios
+                .Where(s => s.OsId == servicio.OsId && s.Activo)
+                .ToListAsync();
+
+            var todosFinalizados = todosServicios.All(s =>
+                s.OsServicioId == osServicioId // este que acabamos de completar
+                || s.Estado == EstadoServicioOS.Completado
+                || s.Estado == EstadoServicioOS.Cancelado);
+
+            if (todosFinalizados)
+            {
+                var estadoCompletada = await context.EstadosOs
+                    .FirstOrDefaultAsync(e => e.Codigo == EstadoOs.Estados.Completada && e.Activo);
+
+                if (estadoCompletada != null)
+                {
+                    servicio.OrdenServicio.EstadoId = estadoCompletada.EstadoId;
+                    servicio.OrdenServicio.UsuarioModificaId = usuarioId;
+                    servicio.OrdenServicio.FechaModificacion = DateTime.UtcNow;
+                }
+            }
+
             await context.SaveChangesAsync();
 
-            return ApiResponse<bool>.ok(true, "Trabajo completado exitosamente.");
+            return ApiResponse<bool>.ok(true, todosFinalizados
+                ? "Trabajo completado. La orden de servicio se completó automáticamente."
+                : "Trabajo completado exitosamente.");
         }
 
         public async Task<ApiResponse<bool>> CancelarServicioAsync(int osServicioId, string usuarioId)

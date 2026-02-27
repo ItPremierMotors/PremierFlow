@@ -234,13 +234,13 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             if (dto.TipoIngreso == TipoIngreso.WalkIn)
             {
                 // Walk-In: el cliente está presente, solo validar que sea hoy o futuro
-                if (dto.FechaHoraInicio.Date < DateTime.Now.Date)
+                if (dto.FechaHoraInicio.Date < DateTime.UtcNow.Date)
                     return ApiResponse<CitaDTO>.fail(400, null, "La fecha del Walk-In no puede ser anterior a hoy.");
             }
             else
             {
                 // Cita y Garantía: debe ser fecha/hora futura
-                if (dto.FechaHoraInicio <= DateTime.Now)
+                if (dto.FechaHoraInicio <= DateTime.UtcNow)
                     return ApiResponse<CitaDTO>.fail(400, null, "La fecha de la cita debe ser futura.");
             }
 
@@ -306,7 +306,6 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 FechaHoraFin = fechaHoraFin,
                 FechaRecepcion = dto.FechaHoraInicio.Date,
                 Estado = EstadoCita.Agendada,
-                TipoIngreso = dto.TipoIngreso,
                 MotivoVisita = dto.MotivoVisita,
                 Observaciones = dto.Observaciones,
                 SucursalId = dto.SucursalId,
@@ -559,6 +558,21 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             if (cita.Estado != EstadoCita.EnProceso)
                 return ApiResponse<CitaDTO>.fail(400, null, "Solo se pueden transferir citas en proceso.");
 
+            // Validar que los servicios de la OS no estén todos completados
+            if (cita.OrdenServicio != null)
+            {
+                var serviciosActivos = await context.OsServicios
+                    .Where(s => s.OsId == cita.OrdenServicio.OsId && s.Activo)
+                    .ToListAsync();
+
+                if (serviciosActivos.Any() && serviciosActivos.All(s =>
+                    s.Estado == EstadoServicioOS.Completado || s.Estado == EstadoServicioOS.Cancelado))
+                {
+                    return ApiResponse<CitaDTO>.fail(400, null,
+                        "No se puede transferir: todos los servicios de la orden ya están completados. Proceda a cerrar la orden.");
+                }
+            }
+
             // 2. Calcular minutos restantes basado en la duración ACTUAL de la cita
             var minutosActuales = (int)cita.Duracion.TotalMinutes;
 
@@ -705,7 +719,6 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 FechaHoraFin = c.FechaHoraFin,
                 FechaRecepcion = c.FechaRecepcion,
                 Estado = c.Estado,
-                TipoIngreso = c.TipoIngreso,
                 MotivoVisita = c.MotivoVisita,
                 Observaciones = c.Observaciones,
                 MotivoCancelacion = c.MotivoCancelacion,

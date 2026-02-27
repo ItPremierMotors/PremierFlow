@@ -1,20 +1,22 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using PremierFlow.Application.Common;
 using PremierFlow.Application.Dtos.Catalogo;
+using PremierFlow.Application.Dtos.User;
+using PremierFlow.Application.Interfaces.Auth;
 using PremierFlow.Application.Interfaces.Catalogo;
 using PremierFlow.Domain.Entities;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Catalogo.TecnicoServices
 {
     public class TecnicoService : ITecnicoService
     {
         private readonly PremierFlowDbContext context;
+        private readonly IUserService userService;
 
-        public TecnicoService(PremierFlowDbContext context) {
-        this.context = context;
+        public TecnicoService(PremierFlowDbContext context, IUserService userService)
+        {
+            this.context = context;
+            this.userService = userService;
         }
 
         public async Task<ApiResponse<TecnicoDTO>> CreateAsync(CreateTecnicoDTO dto, string usuarioId)
@@ -30,6 +32,30 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Catalogo.
                 if(!sucursalExists)
                     return ApiResponse<TecnicoDTO>.fail(400,null,"La sucursal especificada no existe.");
             }
+
+            // Crear cuenta de acceso si se proporcionó email y password
+            string? nuevoUsuarioId = dto.UsuarioId;
+            if (!string.IsNullOrWhiteSpace(dto.Email) && !string.IsNullOrWhiteSpace(dto.Password))
+            {
+                var nombreCompleto = $"{dto.Nombre} {dto.Apellidos}";
+                var createUserRequest = new CreateUserRequest
+                {
+                    Email = dto.Email,
+                    Password = dto.Password,
+                    NombreCompleto = nombreCompleto,
+                    UserName = UserNameHelper.GenerarUserName(nombreCompleto),
+                    Departamento = "Taller",
+                    Cargo = "Técnico",
+                    Roles = new List<string> { "Tecnico" }
+                };
+
+                var userResult = await userService.CreateAsync(createUserRequest);
+                if (!userResult.Success)
+                    return ApiResponse<TecnicoDTO>.fail(userResult.StatusCode, userResult.Errors, userResult.message);
+
+                nuevoUsuarioId = userResult.Data;
+            }
+
             var tecnico = new Tecnico
             {
                 Codigo = dto.Codigo,
@@ -37,7 +63,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Catalogo.
                 Apellidos = dto.Apellidos,
                 Especialidad = dto.Especialidad,
                 BahiaAsignada = dto.BahiaAsignada,
-                UsuarioId = dto.UsuarioId,
+                UsuarioId = nuevoUsuarioId,
                 SucursalId = dto.SucursalId,
                 Activo = true,
                 FechaCreacion = DateTime.UtcNow,

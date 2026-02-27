@@ -16,7 +16,6 @@ namespace PremierFlow.Application.Dtos.Taller
         public DateTime FechaHoraFin { get; set; }
         public DateTime FechaRecepcion { get; set; }
         public EstadoCita Estado { get; set; }
-        public TipoIngreso TipoIngreso { get; set; }
         public string MotivoVisita { get; set; } = null!;
         public string? Observaciones { get; set; }
         public string? MotivoCancelacion { get; set; }
@@ -49,6 +48,9 @@ namespace PremierFlow.Application.Dtos.Taller
         public int VehiculoId { get; set; }
         public int TipoServicioId { get; set; }
         public DateTime FechaHoraInicio { get; set; }
+        /// <summary>
+        /// Solo para validación de flujo (WalkIn permite hora manual, etc). No se persiste en Cita.
+        /// </summary>
         public TipoIngreso TipoIngreso { get; set; } = TipoIngreso.Cita;
         public string MotivoVisita { get; set; } = null!;
         public string? Observaciones { get; set; }

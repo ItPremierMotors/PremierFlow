@@ -272,14 +272,45 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             asignacion.FechaModificacion = DateTime.UtcNow;
 
             // Completar el servicio si está vinculado y en proceso
+            bool osAutoCompletada = false;
             if (asignacion.OsServicio != null && asignacion.OsServicio.EstaEnProceso)
             {
                 asignacion.OsServicio.CompletarTrabajo();
+
+                // Verificar si TODOS los servicios activos de la OS están completados/cancelados
+                var todosServicios = await context.OsServicios
+                    .Where(s => s.OsId == asignacion.OsServicio.OsId && s.Activo)
+                    .ToListAsync();
+
+                var todosFinalizados = todosServicios.All(s =>
+                    s.OsServicioId == asignacion.OsServicioId
+                    || s.Estado == EstadoServicioOS.Completado
+                    || s.Estado == EstadoServicioOS.Cancelado);
+
+                if (todosFinalizados)
+                {
+                    var estadoCompletada = await context.EstadosOs
+                        .FirstOrDefaultAsync(e => e.Codigo == EstadoOs.Estados.Completada && e.Activo);
+
+                    if (estadoCompletada != null)
+                    {
+                        var os = await context.OrdenesServicio.FindAsync(asignacion.OsServicio.OsId);
+                        if (os != null)
+                        {
+                            os.EstadoId = estadoCompletada.EstadoId;
+                            os.UsuarioModificaId = usuarioId;
+                            os.FechaModificacion = DateTime.UtcNow;
+                            osAutoCompletada = true;
+                        }
+                    }
+                }
             }
 
             await context.SaveChangesAsync();
 
-            return ApiResponse<bool>.ok(true, "Trabajo completado exitosamente.");
+            return ApiResponse<bool>.ok(true, osAutoCompletada
+                ? "Trabajo completado. La orden de servicio se completó automáticamente."
+                : "Trabajo completado exitosamente.");
         }
 
         public async Task<ApiResponse<AsignacionTecnicoDTO>> ReasignarAsync(ReasignarDTO dto, string usuarioId)

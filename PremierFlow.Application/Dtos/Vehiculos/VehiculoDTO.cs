@@ -16,7 +16,6 @@ namespace PremierFlow.Application.Dtos.Vehiculos
            #region Estado y Ubicación
             public EstadoVehiculo Estado { get; set; }
             public int? UbicacionId { get; set; }
-            public int? SucursalId { get; set; }
          #endregion
             public int Anio { get; set; }
             public string? Color { get; set; }

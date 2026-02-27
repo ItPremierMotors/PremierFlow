@@ -200,10 +200,6 @@ namespace PremierFlow.Infrastructure.Configurations
                 .HasColumnName("no_show_count")
                 .HasDefaultValue(0);
 
-            builder.Property(c => c.UsuarioId)
-                .HasColumnName("usuario_id")
-                .HasMaxLength(450);
-
             // Campos de auditoría (de SoftDeletableEntity)
             builder.Property(c => c.Activo)
                 .HasColumnName("activo")

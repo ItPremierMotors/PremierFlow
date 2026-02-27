@@ -310,7 +310,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 CitaId = dto.CitaId,
                 VehiculoId = cita.VehiculoId,
                 ClienteId = cita.ClienteId,
-                FechaApertura = DateTime.Now,
+                FechaApertura = DateTime.UtcNow,
                 EstadoId = estadoAbierta.EstadoId,
                 KilometrajeIngreso = dto.KilometrajeIngreso,
                 NivelCombustible = dto.NivelCombustible,
@@ -419,7 +419,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 CitaId = null,  // Walk-in no tiene cita
                 VehiculoId = dto.VehiculoId,
                 ClienteId = dto.ClienteId,
-                FechaApertura = DateTime.Now,
+                FechaApertura = DateTime.UtcNow,
                 EstadoId = estadoAbierta.EstadoId,
                 KilometrajeIngreso = dto.KilometrajeIngreso,
                 NivelCombustible = dto.NivelCombustible,
@@ -520,7 +520,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             return ApiResponse<bool>.ok(true, $"Estado cambiado a {nuevoEstado.Nombre}.");
         }
 
-        public async Task<ApiResponse<bool>> CerrarAsync(CerrarOsDTO dto, string usuarioId)
+        public async Task<ApiResponse<int?>> CerrarAsync(CerrarOsDTO dto, string usuarioId)
         {
             var os = await context.OrdenesServicio
                 .Include(o => o.Estado)
@@ -531,17 +531,21 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 .FirstOrDefaultAsync(o => o.OsId == dto.OsId && o.Activo);
 
             if (os == null)
-                return ApiResponse<bool>.fail(404, null, "Orden de servicio no encontrada.");
+                return ApiResponse<int?>.fail(404, null, "Orden de servicio no encontrada.");
 
             if (!os.EstaAbierta)
-                return ApiResponse<bool>.fail(400, null, "La orden de servicio ya está cerrada o cancelada.");
+                return ApiResponse<int?>.fail(400, null, "La orden de servicio ya está cerrada o cancelada.");
+
+            // Solo se puede cerrar desde FACTURADA
+            if (os.Estado.Codigo != EstadoOs.Estados.Facturada)
+                return ApiResponse<int?>.fail(400, null, "Solo se puede cerrar una orden facturada.");
 
             // Obtener estado CERRADA
             var estadoCerrada = await context.EstadosOs
                 .FirstOrDefaultAsync(e => e.Codigo == EstadoOs.Estados.Cerrada && e.Activo);
 
             if (estadoCerrada == null)
-                return ApiResponse<bool>.fail(500, null, "Estado CERRADA no configurado en el sistema.");
+                return ApiResponse<int?>.fail(500, null, "Estado CERRADA no configurado en el sistema.");
 
             // Cerrar OS
             os.Cerrar(dto.ObservacionesCierre);
@@ -558,20 +562,13 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 os.Cita.Completar();
             }
 
-            // Crear registro en historial ATS
-            var trabajosRealizados = string.Join(", ", os.Servicios
-                .Where(s => s.Estado == EstadoServicioOS.Completado)
-                .Select(s => s.TipoServicio?.Nombre ?? "Servicio"));
-
-            var historial = HistorialAts.CrearDesdeOs(os, trabajosRealizados, dto.ProximaRevision);
-            historial.UsuarioCreaId = usuarioId;
-            historial.FechaCreacion = DateTime.UtcNow;
-
-            context.HistorialAts.Add(historial);
+            // Guardar próxima revisión en la OS
+            os.ProximaRevision = dto.ProximaRevision;
 
             await context.SaveChangesAsync();
 
-            return ApiResponse<bool>.ok(true, "Orden de servicio cerrada exitosamente.");
+            // Retornar CitaId para que el frontend pueda redirigir a fotos de salida
+            return ApiResponse<int?>.ok(os.CitaId, "Orden de servicio cerrada exitosamente.");
         }
 
         public async Task<ApiResponse<bool>> CancelarAsync(int osId, string motivo, string usuarioId)
@@ -587,6 +584,20 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             if (!os.EstaAbierta)
                 return ApiResponse<bool>.fail(400, null, "La orden de servicio ya está cerrada o cancelada.");
 
+            // Validar que se puede cancelar desde el estado actual
+            var estadosCancelables = new[]
+            {
+                EstadoOs.Estados.Abierta,
+                EstadoOs.Estados.Diagnostico,
+                EstadoOs.Estados.Cotizada,
+                EstadoOs.Estados.Aprobada,
+                EstadoOs.Estados.Pausada
+            };
+
+            if (!estadosCancelables.Contains(os.Estado.Codigo))
+                return ApiResponse<bool>.fail(400, null,
+                    $"No se puede cancelar una orden en estado {os.Estado.Nombre}. Solo se pueden cancelar órdenes que no estén en trabajo, completadas o facturadas.");
+
             // Obtener estado CANCELADA
             var estadoCancelada = await context.EstadosOs
                 .FirstOrDefaultAsync(e => e.Codigo == EstadoOs.Estados.Cancelada && e.Activo);
@@ -596,7 +607,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
 
             os.EstadoId = estadoCancelada.EstadoId;
             os.ObservacionesCierre = motivo;
-            os.FechaCierre = DateTime.Now;
+            os.FechaCierre = DateTime.UtcNow;
             os.UsuarioModificaId = usuarioId;
             os.FechaModificacion = DateTime.UtcNow;
 

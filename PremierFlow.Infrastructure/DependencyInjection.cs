@@ -16,6 +16,7 @@ using PremierFlow.Infrastructure.Persistence.Repositories.Services.Catalogo.Mode
 using PremierFlow.Infrastructure.Persistence.Repositories.Services.Catalogo.TecnicoServices;
 using PremierFlow.Infrastructure.Persistence.Repositories.Services.Catalogo.TipoServicioServices;
 using PremierFlow.Infrastructure.Persistence.Repositories.Services.Catalogo.SucursalServices;
+using PremierFlow.Infrastructure.Persistence.Repositories.Services.Catalogo.UbicacionServices;
 using PremierFlow.Infrastructure.Persistence.Repositories.Services.Catalogo.VersionVehiculoServices;
 using PremierFlow.Infrastructure.Persistence.Repositories.Services.Cliente;
 using PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller;
@@ -74,6 +75,7 @@ namespace PremierFlow.Infrastructure
             services.AddScoped<ITecnicoService, TecnicoService>();
             services.AddScoped<IEstadoOsService, EstadoOsService>();
             services.AddScoped<ISucursalService, SucursalService>();
+            services.AddScoped<IUbicacionService, UbicacionService>();
 
             // Fase 2: Cliente y Vehículo
             services.AddScoped<IClienteService, ClienteService>();
@@ -87,7 +89,6 @@ namespace PremierFlow.Infrastructure
             services.AddScoped<IOsServicioService, OsServicioService>();
             services.AddScoped<IAsignacionTecnicoService, AsignacionTecnicoService>();
             services.AddScoped<IEvidenciaService, EvidenciaService>();
-            services.AddScoped<IHistorialAtsService, HistorialAtsService>();
 
             //servicio de seguridad
             services.AddScoped<IJwtTokenService, JwtTokenService>();

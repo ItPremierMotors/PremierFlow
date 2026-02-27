@@ -11,9 +11,7 @@ using PremierFlow.Application.Interfaces.Auth;
 using PremierFlow.Infrastructure.Identity;
 using PremierFlow.Infrastructure.Persistence.Repositories.Services.AuthServices;
 using PremierFlow.Infrastructure.Security;
-using System.Globalization;
 using System.Security.Claims;
-using System.Text;
 
 
 namespace PremierFlow.WebAPI.Controllers
@@ -68,7 +66,7 @@ namespace PremierFlow.WebAPI.Controllers
                 });
             }
 
-              request.UserName = GenerarUserName(request.NombreCompleto);
+              request.UserName = UserNameHelper.GenerarUserName(request.NombreCompleto);
 
               var result = await userService.CreateAsync(request);
               return StatusCode(result.StatusCode, result);
@@ -144,40 +142,6 @@ namespace PremierFlow.WebAPI.Controllers
         {
             var result = await userService.ResetPasswordAsync(id, request);
             return StatusCode(result.StatusCode, result);
-        }
-
-        public static string GenerarUserName(string nombreCompleto)
-        {
-            if (string.IsNullOrWhiteSpace(nombreCompleto))
-                return string.Empty;
-
-            // Separar por espacios y limpiar
-            var partes = nombreCompleto
-                .Trim()
-                .Split(' ', StringSplitOptions.RemoveEmptyEntries);
-
-            if (partes.Length < 2)
-                return partes[0].Substring(0, 1).ToUpper();
-
-            var inicialNombre = partes[0].Substring(0, 1);
-            var apellido = partes.Length >= 3 ? partes[2] : partes[1];
-
-            var username = inicialNombre + apellido;
-
-            return QuitarAcentos(username).ToUpper();
-        }
-        private static string QuitarAcentos(string texto)
-        {
-            var normalized = texto.Normalize(NormalizationForm.FormD);
-            var sb = new StringBuilder();
-
-            foreach (var c in normalized)
-            {
-                if (CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark)
-                    sb.Append(c);
-            }
-
-            return sb.ToString().Normalize(NormalizationForm.FormC);
         }
 
     }
