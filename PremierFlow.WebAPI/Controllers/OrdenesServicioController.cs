@@ -91,6 +91,14 @@ namespace PremierFlow.WebAPI.Controllers
             var result = await _osService.GetByVehiculoAsync(vehiculoId);
             return StatusCode(result.StatusCode, result);
         }
+
+        [HttpGet("GetHistorialServicio/{vehiculoId}")]
+        public async Task<IActionResult> GetHistorialServicio(int vehiculoId)
+        {
+            var result = await _osService.GetHistorialServicioVehiculoAsync(vehiculoId);
+            return StatusCode(result.StatusCode, result);
+        }
+
         [HttpGet("GetByEstado/{estadoId}")]
         public async Task<IActionResult> GetByEstado(int estadoId, [FromQuery] int? sucursalId = null)
         {

@@ -157,7 +157,7 @@ namespace PremierFlow.WebAPI.Controllers
             if (dto.NuevoEstado == EstadoVehiculo.Reservado && !User.IsInRole("JefeVentas"))
                 return StatusCode(403, ApiResponse<bool>.fail(403, null, "Solo el rol 'Jefe Ventas' puede reservar vehículos."));
 
-            var result = await _vehiculoService.CambiarEstadoAsync(vehiculoId, dto.NuevoEstado, UserFromToken, dto.ClienteId, dto.VendedorId);
+            var result = await _vehiculoService.CambiarEstadoAsync(vehiculoId, dto.NuevoEstado, UserFromToken, dto.ClienteId, dto.VendedorId, dto.UbicacionId);
             return StatusCode(result.StatusCode, result);
         }
 

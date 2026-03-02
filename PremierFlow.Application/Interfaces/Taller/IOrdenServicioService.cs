@@ -19,6 +19,7 @@ namespace PremierFlow.Application.Interfaces.Taller
         Task<ApiResponse<List<OrdenServicioDTO>>> GetByRangoFechasAsync(DateTime fechaInicio, DateTime fechaFin, int? sucursalId = null);
         Task<ApiResponse<List<OrdenServicioDTO>>> GetByClienteAsync(int clienteId);
         Task<ApiResponse<List<OrdenServicioDTO>>> GetByVehiculoAsync(int vehiculoId);
+        Task<ApiResponse<HistorialServicioVehiculoDTO>> GetHistorialServicioVehiculoAsync(int vehiculoId);
         Task<ApiResponse<List<OrdenServicioDTO>>> GetByEstadoAsync(int estadoId, int? sucursalId = null);
 
         // Acciones

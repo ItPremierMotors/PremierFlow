@@ -122,6 +122,9 @@ public class VehiculoConfiguration : IEntityTypeConfiguration<Vehiculo>
             builder.Property(v => v.FechaEntrega)
                 .HasColumnName("fecha_entrega");
 
+            builder.Property(v => v.FechaMaximaEntrega)
+                .HasColumnName("fecha_maxima_entrega");
+
             builder.Property(v => v.VendedorId)
                 .HasColumnName("vendedor_id")
                 .HasMaxLength(450);

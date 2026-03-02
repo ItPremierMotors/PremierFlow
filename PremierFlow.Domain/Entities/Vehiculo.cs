@@ -110,6 +110,11 @@ namespace PremierFlow.Domain.Entities
         public DateTime? FechaEntrega { get; set; }
 
         /// <summary>
+        /// Fecha máxima de entrega (FechaVenta + 7 días hábiles).
+        /// </summary>
+        public DateTime? FechaMaximaEntrega { get; set; }
+
+        /// <summary>
         /// Vendedor que cerró la venta.
         /// </summary>
         public string? VendedorId { get; set; }

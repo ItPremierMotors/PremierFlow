@@ -41,13 +41,17 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
             return ApiResponse<bool>.ok(true, $"Kilometraje actualizado a {nuevoKm} km.");
         }
 
-        public async Task<ApiResponse<bool>> CambiarEstadoAsync(int vehiculoId, EstadoVehiculo nuevoEstado, string usuarioId, int? clienteId = null, string? vendedorId = null)
+        public async Task<ApiResponse<bool>> CambiarEstadoAsync(int vehiculoId, EstadoVehiculo nuevoEstado, string usuarioId, int? clienteId = null, string? vendedorId = null, int? ubicacionId = null)
         {
             var vehiculo = await context.Vehiculos
           .FirstOrDefaultAsync(v => v.VehiculoId == vehiculoId && v.Activo);
 
             if (vehiculo == null)
                 return ApiResponse<bool>.fail(404, null, "Vehículo no encontrado.");
+
+            // Aplicar nueva ubicación si se proporcionó
+            if (ubicacionId.HasValue)
+                vehiculo.UbicacionId = ubicacionId.Value;
 
             // Validar transición
             if (!EsTransicionValida(vehiculo.Estado, nuevoEstado))
@@ -92,6 +96,19 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
                 vehiculo.ReservadoPorId = null;
                 vehiculo.FechaReserva = null;
                 vehiculo.FechaLimiteReserva = null;
+            }
+
+            // Entrando a Vendido: auto-set FechaVenta y FechaMaximaEntrega
+            if (nuevoEstado == EstadoVehiculo.Vendido)
+            {
+                vehiculo.FechaVenta = DateTime.UtcNow;
+                vehiculo.FechaMaximaEntrega = AgregarDiasHabiles(DateTime.UtcNow, 7);
+            }
+
+            // Entrando a Entregado: auto-set FechaEntrega
+            if (nuevoEstado == EstadoVehiculo.Entregado)
+            {
+                vehiculo.FechaEntrega = DateTime.UtcNow;
             }
 
             vehiculo.Estado = nuevoEstado;
@@ -514,9 +531,15 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
             vehiculo.CostoImportacion = dto.CostoImportacion;
             vehiculo.ClienteId = dto.ClienteId;
             vehiculo.PrecioLista = dto.PrecioLista;
-            vehiculo.PrecioVenta = dto.PrecioVenta;
-            vehiculo.FechaVenta = dto.FechaVenta;
-            vehiculo.FechaEntrega = dto.FechaEntrega;
+
+            // Proteger campos de venta si ya está Vendido o Entregado
+            if (vehiculo.Estado < EstadoVehiculo.Vendido)
+            {
+                vehiculo.PrecioVenta = dto.PrecioVenta;
+                vehiculo.FechaVenta = dto.FechaVenta;
+                vehiculo.FechaEntrega = dto.FechaEntrega;
+            }
+
             vehiculo.VendedorId = dto.VendedorId;
             vehiculo.KilometrajeActual = dto.KilometrajeActual;
             vehiculo.FechaPrimeraMatricula = dto.FechaPrimeraMatricula;
@@ -769,6 +792,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
                 PrecioVenta = v.PrecioVenta,
                 FechaVenta = v.FechaVenta,
                 FechaEntrega = v.FechaEntrega,
+                FechaMaximaEntrega = v.FechaMaximaEntrega,
                 VendedorId = v.VendedorId,
                 KilometrajeActual = v.KilometrajeActual,
                 GarantiaHasta = v.GarantiaHasta,
@@ -815,6 +839,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
                 PrecioVenta = v.PrecioVenta,
                 FechaVenta = v.FechaVenta,
                 FechaEntrega = v.FechaEntrega,
+                FechaMaximaEntrega = v.FechaMaximaEntrega,
                 VendedorId = v.VendedorId,
                 KilometrajeActual = v.KilometrajeActual,
                 FechaPrimeraMatricula = v.FechaPrimeraMatricula,
@@ -911,6 +936,18 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
                 return false;
 
             return permitidos.Contains(nuevo);
+        }
+
+        private static DateTime AgregarDiasHabiles(DateTime desde, int dias)
+        {
+            var fecha = desde;
+            while (dias > 0)
+            {
+                fecha = fecha.AddDays(1);
+                if (fecha.DayOfWeek != DayOfWeek.Saturday && fecha.DayOfWeek != DayOfWeek.Sunday)
+                    dias--;
+            }
+            return fecha;
         }
 
         #endregion

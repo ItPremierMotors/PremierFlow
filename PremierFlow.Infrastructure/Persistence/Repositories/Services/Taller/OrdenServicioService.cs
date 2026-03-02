@@ -230,6 +230,69 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             return ApiResponse<List<OrdenServicioDTO>>.ok(dtos, "Órdenes de servicio obtenidas.");
         }
 
+        public async Task<ApiResponse<HistorialServicioVehiculoDTO>> GetHistorialServicioVehiculoAsync(int vehiculoId)
+        {
+            var vehiculo = await context.Vehiculos
+                .Include(v => v.Marca)
+                .Include(v => v.Modelo)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(v => v.VehiculoId == vehiculoId && v.Activo);
+
+            if (vehiculo == null)
+                return ApiResponse<HistorialServicioVehiculoDTO>.fail(404, null, "Vehículo no encontrado.");
+
+            var ordenes = await context.OrdenesServicio
+                .Include(o => o.Estado)
+                .Include(o => o.Sucursal)
+                .Include(o => o.Servicios.Where(s => s.Activo))
+                    .ThenInclude(s => s.TipoServicio)
+                .Include(o => o.Servicios.Where(s => s.Activo))
+                    .ThenInclude(s => s.Tecnico)
+                .AsNoTracking()
+                .Where(o => o.VehiculoId == vehiculoId && o.Activo)
+                .OrderByDescending(o => o.FechaApertura)
+                .ToListAsync();
+
+            var ultimaCerrada = ordenes.FirstOrDefault(o => o.FechaCierre != null);
+
+            var dto = new HistorialServicioVehiculoDTO
+            {
+                VehiculoId = vehiculo.VehiculoId,
+                VehiculoDescripcion = $"{vehiculo.Marca?.Nombre} {vehiculo.Modelo?.Nombre} {vehiculo.Anio}".Trim(),
+                Placa = vehiculo.Placa,
+                KilometrajeActual = vehiculo.KilometrajeActual,
+                TotalVisitas = ordenes.Count,
+                UltimaVisita = ordenes.FirstOrDefault()?.FechaApertura,
+                UltimaRecomendacion = ultimaCerrada?.ProximaRevision,
+                Ordenes = ordenes.Select(o => new HistorialServicioItemDTO
+                {
+                    OsId = o.OsId,
+                    NumeroOs = o.NumeroOs,
+                    FechaApertura = o.FechaApertura,
+                    FechaCierre = o.FechaCierre,
+                    EstadoNombre = o.Estado?.Nombre ?? "Desconocido",
+                    EstadoCodigo = o.Estado?.Codigo ?? "",
+                    KilometrajeIngreso = o.KilometrajeIngreso,
+                    TipoIngreso = o.TipoIngreso.ToString(),
+                    EsGarantia = o.EsGarantia,
+                    TotalGeneral = o.TotalGeneral,
+                    ProximaRevision = o.ProximaRevision,
+                    ObservacionesCierre = o.ObservacionesCierre,
+                    SucursalNombre = o.Sucursal?.Nombre,
+                    Servicios = o.Servicios.Select(s => new HistorialServicioLineaDTO
+                    {
+                        TipoServicioNombre = s.TipoServicio?.Nombre ?? "N/A",
+                        DescripcionTrabajo = s.DescripcionTrabajo,
+                        EstadoNombre = s.Estado.ToString(),
+                        Subtotal = s.Subtotal,
+                        TecnicoNombre = s.Tecnico?.NombreCompleto
+                    }).ToList()
+                }).ToList()
+            };
+
+            return ApiResponse<HistorialServicioVehiculoDTO>.ok(dto, "Historial de servicio obtenido.");
+        }
+
         public async Task<ApiResponse<List<OrdenServicioDTO>>> GetByEstadoAsync(int estadoId, int? sucursalId = null)
         {
             var estadoExiste = await context.EstadosOs.AnyAsync(e => e.EstadoId == estadoId && e.Activo);
