@@ -2,6 +2,7 @@
 using PremierFlow.Application.Common;
 using PremierFlow.Application.Dtos.Taller;
 using PremierFlow.Application.Interfaces.Taller;
+using PremierFlow.Domain.Common;
 using PremierFlow.Domain.Entities;
 using PremierFlow.Domain.Enums;
 using System;
@@ -99,7 +100,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 Observaciones = dto.Observaciones,
                 Activo = true,
                 UsuarioCreaId = usuarioId,
-                FechaCreacion = DateTime.UtcNow
+                FechaCreacion = TimeHelper.Now
             };
 
             servicio.CalcularSubtotal();
@@ -156,7 +157,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             servicio.TecnicoAsignadoId = dto.TecnicoAsignadoId;
             servicio.Observaciones = dto.Observaciones;
             servicio.UsuarioModificaId = usuarioId;
-            servicio.FechaModificacion = DateTime.UtcNow;
+            servicio.FechaModificacion = TimeHelper.Now;
 
             servicio.CalcularSubtotal();
 
@@ -189,7 +190,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             // Soft delete
             servicio.Activo = false;
             servicio.UsuarioModificaId = usuarioId;
-            servicio.FechaModificacion = DateTime.UtcNow;
+            servicio.FechaModificacion = TimeHelper.Now;
 
             // Recalcular totales de la OS
             servicio.OrdenServicio.CalcularTotales();
@@ -220,7 +221,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
 
             servicio.IniciarTrabajo();
             servicio.UsuarioModificaId = usuarioId;
-            servicio.FechaModificacion = DateTime.UtcNow;
+            servicio.FechaModificacion = TimeHelper.Now;
 
             await context.SaveChangesAsync();
 
@@ -245,7 +246,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
 
             servicio.CompletarTrabajo();
             servicio.UsuarioModificaId = usuarioId;
-            servicio.FechaModificacion = DateTime.UtcNow;
+            servicio.FechaModificacion = TimeHelper.Now;
 
             // Verificar si TODOS los servicios activos de la OS están completados/cancelados
             var todosServicios = await context.OsServicios
@@ -266,7 +267,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 {
                     servicio.OrdenServicio.EstadoId = estadoCompletada.EstadoId;
                     servicio.OrdenServicio.UsuarioModificaId = usuarioId;
-                    servicio.OrdenServicio.FechaModificacion = DateTime.UtcNow;
+                    servicio.OrdenServicio.FechaModificacion = TimeHelper.Now;
                 }
             }
 
@@ -297,7 +298,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
 
             servicio.Cancelar();
             servicio.UsuarioModificaId = usuarioId;
-            servicio.FechaModificacion = DateTime.UtcNow;
+            servicio.FechaModificacion = TimeHelper.Now;
 
             // Recalcular totales de la OS (excluye cancelados)
             servicio.OrdenServicio.CalcularTotales();
@@ -337,7 +338,10 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 TiempoTrabajoMinutos = s.TiempoTrabajo.HasValue
                     ? (int)s.TiempoTrabajo.Value.TotalMinutes
                     : null,
-                CantidadAsignaciones = s.Asignaciones?.Count ?? 0
+                CantidadAsignaciones = s.Asignaciones?.Count ?? 0,
+                TieneAsignacionActiva = s.Asignaciones?.Any(a =>
+                    a.Estado == EstadoAsignacion.Asignado ||
+                    a.Estado == EstadoAsignacion.EnProceso) ?? false
             };
         }
 

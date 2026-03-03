@@ -2,6 +2,7 @@
 using PremierFlow.Application.Common;
 using PremierFlow.Application.Dtos.Catalogo;
 using PremierFlow.Application.Interfaces.Catalogo;
+using PremierFlow.Domain.Common;
 using PremierFlow.Domain.Entities;
 
 namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Catalogo.VersionVehiculoServices
@@ -78,7 +79,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Catalogo.
                 CaracteristicasPrincipales = dto.CaracteristicasPrincipales,
                 Activo = true,
                 UsuarioCreaId = usuarioId,
-                FechaCreacion = DateTime.UtcNow
+                FechaCreacion = TimeHelper.Now
             };
 
             // 6. Guardar
@@ -110,7 +111,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Catalogo.
             // 3. Soft delete
             version.Activo = false;
             version.UsuarioModificaId = usuarioId;
-            version.FechaModificacion = DateTime.UtcNow;
+            version.FechaModificacion = TimeHelper.Now;
 
             await context.SaveChangesAsync();
 
@@ -265,7 +266,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Catalogo.
             version.AnioVersion = dto.AnioVersion;
             version.CaracteristicasPrincipales = dto.CaracteristicasPrincipales;
             version.UsuarioModificaId = usuarioId;
-            version.FechaModificacion = DateTime.UtcNow;
+            version.FechaModificacion = TimeHelper.Now;
 
             // 5. Guardar
             await context.SaveChangesAsync();

@@ -102,5 +102,17 @@ namespace PremierFlow.WebAPI.Controllers
             var result = await _recepcionService.IniciarDesdeCitaAsync(dto, userIdFromToken);
             return StatusCode(result.StatusCode, result);
         }
+
+        [HttpPost("IniciarWalkIn")]
+        public async Task<IActionResult> IniciarWalkIn([FromBody] IniciarRecepcionWalkInDTO dto)
+        {
+            var userIdFromToken = User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdFromToken))
+            {
+                return Unauthorized("Usuario no esta Autenticado.");
+            }
+            var result = await _recepcionService.IniciarWalkInAsync(dto, userIdFromToken);
+            return StatusCode(result.StatusCode, result);
+        }
     }
 }

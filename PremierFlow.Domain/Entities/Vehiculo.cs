@@ -162,7 +162,7 @@ namespace PremierFlow.Domain.Entities
         #region General
 
         public string? Observaciones { get; set; }
-        public DateTime FechaRegistro { get; set; } = DateTime.UtcNow;
+        public DateTime FechaRegistro { get; set; } = TimeHelper.Now;
 
         #endregion
 
@@ -206,14 +206,14 @@ namespace PremierFlow.Domain.Entities
         /// <summary>
         /// Indica si está en garantía vigente.
         /// </summary>
-        public bool EnGarantia => GarantiaHasta.HasValue && GarantiaHasta.Value > DateTime.UtcNow;
+        public bool EnGarantia => GarantiaHasta.HasValue && GarantiaHasta.Value > TimeHelper.Now;
 
         /// <summary>
         /// Indica si la reserva ha expirado (pasó la fecha límite).
         /// </summary>
         public bool ReservaExpirada => Estado == EstadoVehiculo.Reservado &&
                                         FechaLimiteReserva.HasValue &&
-                                        FechaLimiteReserva.Value < DateTime.UtcNow;
+                                        FechaLimiteReserva.Value < TimeHelper.Now;
 
 
 
@@ -248,7 +248,7 @@ namespace PremierFlow.Domain.Entities
             ClienteId = clienteId;
             PrecioVenta = precioVenta;
             VendedorId = vendedorId;
-            FechaVenta = DateTime.UtcNow;
+            FechaVenta = TimeHelper.Now;
             Estado = EstadoVehiculo.Vendido;
         }
 
@@ -260,7 +260,7 @@ namespace PremierFlow.Domain.Entities
             if (Estado != EstadoVehiculo.Vendido)
                 throw new InvalidOperationException("El vehículo debe estar vendido para ser entregado");
 
-            FechaEntrega = DateTime.UtcNow;
+            FechaEntrega = TimeHelper.Now;
             Estado = EstadoVehiculo.Entregado;
         }
 

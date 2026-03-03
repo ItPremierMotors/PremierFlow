@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using PremierFlow.Application.Common;
 using PremierFlow.Application.Dtos.User;
 using PremierFlow.Application.Interfaces.Auth;
+using PremierFlow.Domain.Common;
 using PremierFlow.Infrastructure.Identity;
 
 namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.AuthServices
@@ -177,7 +178,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.AuthServi
                     Activo = request.Activo,
                     Cargo = request.Cargo ?? "N/A",
                     Departamento = request.Departamento ?? "N/A",
-                    FechaCreacion = DateTime.UtcNow
+                    FechaCreacion = TimeHelper.Now
                 };
 
                 var createResult = await _userManager.CreateAsync(newUser, request.Password);

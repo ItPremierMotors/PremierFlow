@@ -2,6 +2,7 @@
 using PremierFlow.Application.Common;
 using PremierFlow.Application.Dtos.Taller;
 using PremierFlow.Application.Interfaces.Taller;
+using PremierFlow.Domain.Common;
 using PremierFlow.Domain.Entities;
 using PremierFlow.Domain.Enums;
 using System;
@@ -148,11 +149,11 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 TipoEvidencia = dto.TipoEvidencia,
                 UrlArchivo = dto.UrlArchivo,
                 Descripcion = dto.Descripcion,
-                FechaCaptura = DateTime.UtcNow,
+                FechaCaptura = TimeHelper.Now,
                 UsuarioRegistroId = usuarioId,
                 Activo = true,
                 UsuarioCreaId = usuarioId,
-                FechaCreacion = DateTime.UtcNow
+                FechaCreacion = TimeHelper.Now
             };
 
             context.Evidencias.Add(evidencia);
@@ -212,7 +213,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
 
             var subcarpeta = ObtenerSubcarpeta(dto.TipoEvidencia, dto.RecepcionId);
             var carpetaOs = os.NumeroOs; // Ej: OS-20260223-0001
-            var nombreArchivo = $"{dto.TipoEvidencia}_{DateTime.Now:HHmmss}_{Guid.NewGuid().ToString("N")[..6]}{extension}";
+            var nombreArchivo = $"{dto.TipoEvidencia}_{TimeHelper.Now:HHmmss}_{Guid.NewGuid().ToString("N")[..6]}{extension}";
 
             // Crear directorios si no existen
             var carpetaCompleta = Path.Combine(_basePath, carpetaOs, subcarpeta);
@@ -241,11 +242,11 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 TipoEvidencia = dto.TipoEvidencia,
                 UrlArchivo = urlArchivo,
                 Descripcion = dto.Descripcion,
-                FechaCaptura = DateTime.UtcNow,
+                FechaCaptura = TimeHelper.Now,
                 UsuarioRegistroId = usuarioId,
                 Activo = true,
                 UsuarioCreaId = usuarioId,
-                FechaCreacion = DateTime.UtcNow
+                FechaCreacion = TimeHelper.Now
             };
 
             context.Evidencias.Add(evidencia);
@@ -268,7 +269,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             // Soft delete (no eliminar archivo físico por auditoría)
             evidencia.Activo = false;
             evidencia.UsuarioModificaId = usuarioId;
-            evidencia.FechaModificacion = DateTime.UtcNow;
+            evidencia.FechaModificacion = TimeHelper.Now;
 
             await context.SaveChangesAsync();
 

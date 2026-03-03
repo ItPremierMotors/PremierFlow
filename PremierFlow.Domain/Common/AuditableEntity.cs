@@ -14,7 +14,7 @@ namespace PremierFlow.Domain.Common
         /// </summary>
         public string? UsuarioCreaId { get; set; }
 
-        public DateTime FechaCreacion { get; set; } = DateTime.UtcNow;
+        public DateTime FechaCreacion { get; set; } = TimeHelper.Now;
 
         /// <summary>
         /// ID del usuario que modificó el registro (ApplicationUser.Id)

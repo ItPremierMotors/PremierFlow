@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Identity;
+using PremierFlow.Domain.Common;
 
 namespace PremierFlow.Infrastructure.Identity
 {
@@ -15,7 +16,7 @@ namespace PremierFlow.Infrastructure.Identity
 
         //estado
         public bool Activo { get; set; } = true;
-        public DateTime FechaCreacion { get; set; } = DateTime.UtcNow;
+        public DateTime FechaCreacion { get; set; } = TimeHelper.Now;
         public DateTime? UltimoLogin { get; set; }
 
     }

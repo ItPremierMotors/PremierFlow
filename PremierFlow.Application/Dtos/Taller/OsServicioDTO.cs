@@ -31,6 +31,7 @@ namespace PremierFlow.Application.Dtos.Taller
         public bool EstaEnProceso { get; set; }
         public int? TiempoTrabajoMinutos { get; set; }
         public int CantidadAsignaciones { get; set; }
+        public bool TieneAsignacionActiva { get; set; }
     }
     public class AgregarServicioDTO
     {

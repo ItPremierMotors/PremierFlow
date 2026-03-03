@@ -26,7 +26,7 @@ namespace PremierFlow.Domain.Entities
 
         public string? Descripcion { get; set; }
 
-        public DateTime FechaCaptura { get; set; } = DateTime.UtcNow;
+        public DateTime FechaCaptura { get; set; } = TimeHelper.Now;
 
         /// <summary>
         /// FK a ApplicationUser que tomó la foto.

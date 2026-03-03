@@ -2,6 +2,7 @@
 using PremierFlow.Application.Common;
 using PremierFlow.Application.Dtos.Catalogo;
 using PremierFlow.Application.Interfaces.Catalogo;
+using PremierFlow.Domain.Common;
 using PremierFlow.Domain.Entities;
 using PremierFlow.Domain.Enums;
 using System;
@@ -42,7 +43,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Catalogo.
                 StockRequerido = dto.StockRequerido,
                 Activo = true,
                 UsuarioCreaId = usuarioId,
-                FechaCreacion = DateTime.UtcNow
+                FechaCreacion = TimeHelper.Now
             };
 
             context.TiposServicio.Add(tipo);
@@ -71,7 +72,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Catalogo.
             // 3. Soft delete
             tipo.Activo = false;
             tipo.UsuarioModificaId = usuarioId;
-            tipo.FechaModificacion = DateTime.UtcNow;
+            tipo.FechaModificacion = TimeHelper.Now;
 
             await context.SaveChangesAsync();
 
@@ -197,7 +198,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Catalogo.
             tipo.PrecioBase = dto.PrecioBase;
             tipo.StockRequerido = dto.StockRequerido;
             tipo.UsuarioModificaId = usuarioId;
-            tipo.FechaModificacion = DateTime.UtcNow;
+            tipo.FechaModificacion = TimeHelper.Now;
 
             await context.SaveChangesAsync();
 

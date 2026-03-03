@@ -2,6 +2,7 @@
 using PremierFlow.Application.Common;
 using PremierFlow.Application.Dtos.Taller;
 using PremierFlow.Application.Interfaces.Taller;
+using PremierFlow.Domain.Common;
 using PremierFlow.Domain.Entities;
 using PremierFlow.Domain.Enums;
 using System;
@@ -41,7 +42,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 return ApiResponse<BloqueHorarioDTO>.fail(404, null, "Capacidad de taller no encontrada.");
 
             // 1b. No permitir crear bloques para fechas pasadas
-            if (capacidad.Fecha.Date < DateTime.UtcNow.Date)
+            if (capacidad.Fecha.Date < TimeHelper.Now.Date)
                 return ApiResponse<BloqueHorarioDTO>.fail(400, null, "No se pueden crear bloques para fechas anteriores a hoy.");
 
             // 2. Validar horario
@@ -70,7 +71,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 TipoBloque = dto.TipoBloque,
                 Activo = true,
                 UsuarioCreaId = usuarioId,
-                FechaCreacion = DateTime.UtcNow
+                FechaCreacion = TimeHelper.Now
             };
 
             context.BloquesHorario.Add(bloque);
@@ -97,7 +98,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
 
             bloque.Activo = false;
             bloque.UsuarioModificaId = usuarioId;
-            bloque.FechaModificacion = DateTime.UtcNow;
+            bloque.FechaModificacion = TimeHelper.Now;
 
             await context.SaveChangesAsync();
 
@@ -115,7 +116,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 return ApiResponse<List<BloqueHorarioDTO>>.fail(404, null, "Capacidad de taller no encontrada.");
 
             // 1b. No permitir generar bloques para fechas pasadas
-            if (capacidad.Fecha.Date < DateTime.UtcNow.Date)
+            if (capacidad.Fecha.Date < TimeHelper.Now.Date)
                 return ApiResponse<List<BloqueHorarioDTO>>.fail(400, null, "No se pueden generar bloques para fechas anteriores a hoy.");
 
             // 2. Validar que no existan bloques para esa capacidad
@@ -147,7 +148,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                     TipoBloque = dto.TipoBloque,
                     Activo = true,
                     UsuarioCreaId = usuarioId,
-                    FechaCreacion = DateTime.UtcNow
+                    FechaCreacion = TimeHelper.Now
                 };
 
                 context.BloquesHorario.Add(bloque);
@@ -305,7 +306,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             bloque.CapacidadMaximaVehiculos = dto.CapacidadMaximaVehiculos;
             bloque.TipoBloque = dto.TipoBloque;
             bloque.UsuarioModificaId = usuarioId;
-            bloque.FechaModificacion = DateTime.UtcNow;
+            bloque.FechaModificacion = TimeHelper.Now;
 
             await context.SaveChangesAsync();
 

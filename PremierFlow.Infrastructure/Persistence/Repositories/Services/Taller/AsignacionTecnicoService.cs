@@ -2,6 +2,7 @@
 using PremierFlow.Application.Common;
 using PremierFlow.Application.Dtos.Taller;
 using PremierFlow.Application.Interfaces.Taller;
+using PremierFlow.Domain.Common;
 using PremierFlow.Domain.Entities;
 using PremierFlow.Domain.Enums;
 using System;
@@ -127,16 +128,15 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                     return ApiResponse<AsignacionTecnicoDTO>.fail(400, null, "El servicio ya está completado o cancelado.");
             }
 
-            // 4. Validar que el técnico no tenga asignación activa para la misma OS/servicio
-            var existeAsignacion = await context.AsignacionesTecnico
+            // 4. Validar que el servicio no tenga ya una asignación activa (cualquier técnico)
+            var servicioYaAsignado = await context.AsignacionesTecnico
                 .AnyAsync(a => a.OsId == dto.OsId &&
-                              a.TecnicoId == dto.TecnicoId &&
                               a.OsServicioId == dto.OsServicioId &&
                               a.Activo &&
                               (a.Estado == EstadoAsignacion.Asignado || a.Estado == EstadoAsignacion.EnProceso));
 
-            if (existeAsignacion)
-                return ApiResponse<AsignacionTecnicoDTO>.fail(400, null, "El técnico ya tiene una asignación activa para este trabajo.");
+            if (servicioYaAsignado)
+                return ApiResponse<AsignacionTecnicoDTO>.fail(400, null, "Este servicio ya tiene un técnico asignado.");
 
             // 5. Crear asignación
             var asignacion = new AsignacionTecnico
@@ -144,12 +144,12 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 OsId = dto.OsId,
                 TecnicoId = dto.TecnicoId,
                 OsServicioId = dto.OsServicioId,
-                FechaAsignacion = DateTime.UtcNow,
+                FechaAsignacion = TimeHelper.Now,
                 Estado = EstadoAsignacion.Asignado,
                 Observaciones = dto.Observaciones,
                 Activo = true,
                 UsuarioCreaId = usuarioId,
-                FechaCreacion = DateTime.UtcNow
+                FechaCreacion = TimeHelper.Now
             };
 
             context.AsignacionesTecnico.Add(asignacion);
@@ -194,7 +194,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
 
             asignacion.IniciarTrabajo();
             asignacion.UsuarioModificaId = usuarioId;
-            asignacion.FechaModificacion = DateTime.UtcNow;
+            asignacion.FechaModificacion = TimeHelper.Now;
 
             // Iniciar el servicio si está vinculado y pendiente
             if (asignacion.OsServicio != null && asignacion.OsServicio.Estado == EstadoServicioOS.Pendiente)
@@ -232,7 +232,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
 
             asignacion.Pausar();
             asignacion.UsuarioModificaId = usuarioId;
-            asignacion.FechaModificacion = DateTime.UtcNow;
+            asignacion.FechaModificacion = TimeHelper.Now;
 
             await context.SaveChangesAsync();
 
@@ -252,7 +252,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
 
             asignacion.Reanudar();
             asignacion.UsuarioModificaId = usuarioId;
-            asignacion.FechaModificacion = DateTime.UtcNow;
+            asignacion.FechaModificacion = TimeHelper.Now;
 
             await context.SaveChangesAsync();
 
@@ -273,7 +273,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
 
             asignacion.Completar();
             asignacion.UsuarioModificaId = usuarioId;
-            asignacion.FechaModificacion = DateTime.UtcNow;
+            asignacion.FechaModificacion = TimeHelper.Now;
 
             // Completar el servicio si está vinculado y en proceso
             bool osAutoCompletada = false;
@@ -303,7 +303,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                         {
                             os.EstadoId = estadoCompletada.EstadoId;
                             os.UsuarioModificaId = usuarioId;
-                            os.FechaModificacion = DateTime.UtcNow;
+                            os.FechaModificacion = TimeHelper.Now;
                             osAutoCompletada = true;
                         }
                     }
@@ -355,7 +355,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             }
 
             asignacion.UsuarioModificaId = usuarioId;
-            asignacion.FechaModificacion = DateTime.UtcNow;
+            asignacion.FechaModificacion = TimeHelper.Now;
 
             // Actualizar TecnicoAsignadoId en el servicio si aplica
             if (asignacion.OsServicio != null)
@@ -386,7 +386,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             // Soft delete
             asignacion.Activo = false;
             asignacion.UsuarioModificaId = usuarioId;
-            asignacion.FechaModificacion = DateTime.UtcNow;
+            asignacion.FechaModificacion = TimeHelper.Now;
 
             // Limpiar TecnicoAsignadoId del servicio si aplica
             if (asignacion.OsServicio != null && asignacion.OsServicio.TecnicoAsignadoId == asignacion.TecnicoId)

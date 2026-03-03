@@ -64,7 +64,7 @@ namespace PremierFlow.Domain.Entities
                 throw new InvalidOperationException("Solo se puede iniciar un trabajo pendiente");
 
             Estado = EstadoServicioOS.EnProceso;
-            FechaInicio = DateTime.UtcNow;
+            FechaInicio = TimeHelper.Now;
         }
 
         public void CompletarTrabajo()
@@ -73,7 +73,7 @@ namespace PremierFlow.Domain.Entities
                 throw new InvalidOperationException("Solo se puede completar un trabajo en proceso");
 
             Estado = EstadoServicioOS.Completado;
-            FechaFin = DateTime.UtcNow;
+            FechaFin = TimeHelper.Now;
         }
 
         public void Cancelar()

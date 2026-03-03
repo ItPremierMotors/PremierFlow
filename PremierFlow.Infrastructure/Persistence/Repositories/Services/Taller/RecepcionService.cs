@@ -2,6 +2,7 @@
 using PremierFlow.Application.Common;
 using PremierFlow.Application.Dtos.Taller;
 using PremierFlow.Application.Interfaces.Taller;
+using PremierFlow.Domain.Common;
 using PremierFlow.Domain.Entities;
 using PremierFlow.Domain.Enums;
 
@@ -115,7 +116,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             var recepcion = new Recepcion
             {
                 OsId = dto.OsId,
-                FechaHoraRecepcion = DateTime.UtcNow,
+                FechaHoraRecepcion = TimeHelper.Now,
                 RecibidoPorId = usuarioId,
                 EntregadoPor = dto.EntregadoPor,
                 EstadoCarroceria = dto.EstadoCarroceria,
@@ -131,7 +132,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 ChecklistCompletado = false,
                 Activo = true,
                 UsuarioCreaId = usuarioId,
-                FechaCreacion = DateTime.UtcNow
+                FechaCreacion = TimeHelper.Now
             };
 
             context.Recepciones.Add(recepcion);
@@ -175,7 +176,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             recepcion.Tapetes = dto.Tapetes;
             recepcion.ObservacionesGenerales = dto.ObservacionesGenerales;
             recepcion.UsuarioModificaId = usuarioId;
-            recepcion.FechaModificacion = DateTime.UtcNow;
+            recepcion.FechaModificacion = TimeHelper.Now;
 
             await context.SaveChangesAsync();
 
@@ -195,7 +196,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
 
             recepcion.CompletarChecklist();
             recepcion.UsuarioModificaId = usuarioId;
-            recepcion.FechaModificacion = DateTime.UtcNow;
+            recepcion.FechaModificacion = TimeHelper.Now;
 
             await context.SaveChangesAsync();
 
@@ -218,7 +219,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
 
             recepcion.RegistrarFirma(dto.FirmaClienteBase64);
             recepcion.UsuarioModificaId = usuarioId;
-            recepcion.FechaModificacion = DateTime.UtcNow;
+            recepcion.FechaModificacion = TimeHelper.Now;
 
             await context.SaveChangesAsync();
 
@@ -307,7 +308,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 CitaId = dto.CitaId,
                 VehiculoId = cita.VehiculoId,
                 ClienteId = cita.ClienteId,
-                FechaApertura = DateTime.UtcNow,
+                FechaApertura = TimeHelper.Now,
                 EstadoId = estadoAbierta.EstadoId,
                 KilometrajeIngreso = dto.Kilometraje,
                 NivelCombustible = dto.NivelCombustiblePorcentaje / 100m,
@@ -317,7 +318,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 SucursalId = cita.SucursalId,
                 Activo = true,
                 UsuarioCreaId = usuarioId,
-                FechaCreacion = DateTime.UtcNow
+                FechaCreacion = TimeHelper.Now
             };
             context.OrdenesServicio.Add(os);
 
@@ -332,7 +333,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 Observaciones = cita.MotivoVisita,
                 Activo = true,
                 UsuarioCreaId = usuarioId,
-                FechaCreacion = DateTime.UtcNow
+                FechaCreacion = TimeHelper.Now
             };
             servicioCita.CalcularSubtotal();
             os.Servicios.Add(servicioCita);
@@ -341,7 +342,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             var recepcion = new Recepcion
             {
                 OrdenServicio = os,
-                FechaHoraRecepcion = DateTime.UtcNow,
+                FechaHoraRecepcion = TimeHelper.Now,
                 RecibidoPorId = usuarioId,
                 EntregadoPor = dto.EntregadoPor,
                 EsPropietarioQuienEntrega = dto.EsPropietarioQuienEntrega,
@@ -374,7 +375,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 ChecklistCompletado = true,
                 Activo = true,
                 UsuarioCreaId = usuarioId,
-                FechaCreacion = DateTime.UtcNow
+                FechaCreacion = TimeHelper.Now
             };
             context.Recepciones.Add(recepcion);
 
@@ -382,7 +383,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             cita.Vehiculo.ActualizarKilometraje(dto.Kilometraje);
             cita.IniciarProceso();
             cita.UsuarioModificaId = usuarioId;
-            cita.FechaModificacion = DateTime.UtcNow;
+            cita.FechaModificacion = TimeHelper.Now;
 
             // 9. SaveChanges (todo en una transacción)
             await context.SaveChangesAsync();
@@ -396,11 +397,153 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             return ApiResponse<RecepcionDTO>.ok(MapToDto(recepcion), "Recepción y Orden de Servicio creadas exitosamente.");
         }
 
+        public async Task<ApiResponse<RecepcionDTO>> IniciarWalkInAsync(IniciarRecepcionWalkInDTO dto, string usuarioId)
+        {
+            // 1. Cargar cliente
+            var cliente = await context.Clientes
+                .FirstOrDefaultAsync(c => c.ClienteId == dto.ClienteId && c.Activo);
+            if (cliente == null)
+                return ApiResponse<RecepcionDTO>.fail(404, null, "Cliente no encontrado.");
+
+            // 2. Cargar vehiculo con navegaciones
+            var vehiculo = await context.Vehiculos
+                .Include(v => v.Marca)
+                .Include(v => v.Modelo)
+                .FirstOrDefaultAsync(v => v.VehiculoId == dto.VehiculoId && v.Activo);
+            if (vehiculo == null)
+                return ApiResponse<RecepcionDTO>.fail(404, null, "Vehículo no encontrado.");
+
+            // 3. Validar que el vehiculo pertenezca al cliente
+            if (vehiculo.ClienteId != dto.ClienteId)
+                return ApiResponse<RecepcionDTO>.fail(400, null, "El vehículo no pertenece al cliente seleccionado.");
+
+            // 4. Cargar tipo de servicio
+            var tipoServicio = await context.TiposServicio
+                .FirstOrDefaultAsync(t => t.TipoServicioId == dto.TipoServicioId && t.Activo);
+            if (tipoServicio == null)
+                return ApiResponse<RecepcionDTO>.fail(404, null, "Tipo de servicio no encontrado.");
+
+            // 5. Validar que no tenga OS abierta para este vehiculo
+            var osAbierta = await context.OrdenesServicio
+                .Include(o => o.Estado)
+                .AnyAsync(o => o.VehiculoId == dto.VehiculoId && o.Activo
+                    && o.Estado.Codigo != EstadoOs.Estados.Cerrada
+                    && o.Estado.Codigo != EstadoOs.Estados.Cancelada);
+            if (osAbierta)
+                return ApiResponse<RecepcionDTO>.fail(400, null, "El vehículo ya tiene una orden de servicio abierta.");
+
+            // 6. Validar kilometraje
+            if (dto.Kilometraje < vehiculo.KilometrajeActual)
+                return ApiResponse<RecepcionDTO>.fail(400, null,
+                    $"El kilometraje debe ser mayor o igual al actual ({vehiculo.KilometrajeActual} km).");
+
+            // 7. Obtener estado ABIERTA
+            var estadoAbierta = await context.EstadosOs
+                .FirstOrDefaultAsync(e => e.Codigo == EstadoOs.Estados.Abierta && e.Activo);
+            if (estadoAbierta == null)
+                return ApiResponse<RecepcionDTO>.fail(500, null, "Estado ABIERTA no configurado en el sistema.");
+
+            // 8. Generar número de OS
+            var numeroOs = await GenerarNumeroOsAsync();
+
+            // 9. Crear OrdenServicio (sin CitaId, TipoIngreso = WalkIn)
+            var os = new OrdenServicio
+            {
+                NumeroOs = numeroOs,
+                CitaId = null,
+                VehiculoId = dto.VehiculoId,
+                ClienteId = dto.ClienteId,
+                FechaApertura = TimeHelper.Now,
+                EstadoId = estadoAbierta.EstadoId,
+                KilometrajeIngreso = dto.Kilometraje,
+                NivelCombustible = dto.NivelCombustiblePorcentaje / 100m,
+                TipoIngreso = TipoIngreso.WalkIn,
+                EsGarantia = false,
+                ObservacionesApertura = dto.ObservacionesApertura,
+                SucursalId = dto.SucursalId,
+                Activo = true,
+                UsuarioCreaId = usuarioId,
+                FechaCreacion = TimeHelper.Now
+            };
+            context.OrdenesServicio.Add(os);
+
+            // 10. Agregar servicio seleccionado
+            var servicioOs = new OsServicio
+            {
+                TipoServicioId = dto.TipoServicioId,
+                DescripcionTrabajo = tipoServicio.Nombre,
+                Estado = EstadoServicioOS.Pendiente,
+                PrecioUnitario = tipoServicio.PrecioBase,
+                Cantidad = 1,
+                Observaciones = dto.MotivoVisita,
+                Activo = true,
+                UsuarioCreaId = usuarioId,
+                FechaCreacion = TimeHelper.Now
+            };
+            servicioOs.CalcularSubtotal();
+            os.Servicios.Add(servicioOs);
+
+            // 11. Crear Recepción con todos los campos del wizard
+            var recepcion = new Recepcion
+            {
+                OrdenServicio = os,
+                FechaHoraRecepcion = TimeHelper.Now,
+                RecibidoPorId = usuarioId,
+                EntregadoPor = dto.EntregadoPor,
+                EsPropietarioQuienEntrega = dto.EsPropietarioQuienEntrega,
+                RelacionEntregante = dto.RelacionEntregante,
+                TelefonoEntregante = dto.TelefonoEntregante,
+                DanosExteriorJson = dto.DanosExteriorJson,
+                LlantaRepuesto = dto.LlantaRepuesto,
+                Gato = dto.Gato,
+                Triangulos = dto.Triangulos,
+                Extintor = dto.Extintor,
+                Herramientas = dto.Herramientas,
+                Radio = dto.Radio,
+                Tapetes = dto.Tapetes,
+                Antena = dto.Antena,
+                EspejoIzquierdo = dto.EspejoIzquierdo,
+                EspejoDerecho = dto.EspejoDerecho,
+                Limpiaparabrisas = dto.Limpiaparabrisas,
+                PlacaDelantera = dto.PlacaDelantera,
+                PlacaTrasera = dto.PlacaTrasera,
+                TapaCombustible = dto.TapaCombustible,
+                ManualVehiculo = dto.ManualVehiculo,
+                SegundaLlave = dto.SegundaLlave,
+                InspeccionRuedasJson = dto.InspeccionRuedasJson,
+                NivelAceiteOk = dto.NivelAceiteOk,
+                NivelRefrigeranteOk = dto.NivelRefrigeranteOk,
+                NivelLiquidoFrenosOk = dto.NivelLiquidoFrenosOk,
+                BateriaOk = dto.BateriaOk,
+                ObservacionesGenerales = dto.ObservacionesGenerales,
+                FirmaClienteBase64 = dto.FirmaClienteBase64,
+                ChecklistCompletado = true,
+                Activo = true,
+                UsuarioCreaId = usuarioId,
+                FechaCreacion = TimeHelper.Now
+            };
+            context.Recepciones.Add(recepcion);
+
+            // 12. Actualizar kilometraje del vehiculo
+            vehiculo.ActualizarKilometraje(dto.Kilometraje);
+
+            // 13. SaveChanges (todo en una transacción)
+            await context.SaveChangesAsync();
+
+            // 14. Cargar navegaciones para DTO
+            recepcion.OrdenServicio = os;
+            os.Vehiculo = vehiculo;
+            os.Cliente = cliente;
+            os.Estado = estadoAbierta;
+
+            return ApiResponse<RecepcionDTO>.ok(MapToDto(recepcion), "Recepción Walk-In y Orden de Servicio creadas exitosamente.");
+        }
+
         #region Helpers
 
         private async Task<string> GenerarNumeroOsAsync()
         {
-            var fecha = DateTime.UtcNow;
+            var fecha = TimeHelper.Now;
             var prefijo = $"OS-{fecha:yyyyMMdd}-";
 
             var ultimaOs = await context.OrdenesServicio

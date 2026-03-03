@@ -19,7 +19,7 @@ namespace PremierFlow.Domain.Entities
 
         public int? OsServicioId { get; set; }
 
-        public DateTime FechaAsignacion { get; set; } = DateTime.UtcNow;
+        public DateTime FechaAsignacion { get; set; } = TimeHelper.Now;
 
         public DateTime? FechaInicio { get; set; }
 
@@ -40,7 +40,7 @@ namespace PremierFlow.Domain.Entities
         public TimeSpan? TiempoTrabajado => FechaInicio.HasValue && FechaFin.HasValue
             ? FechaFin.Value - FechaInicio.Value
             : FechaInicio.HasValue
-                ? DateTime.UtcNow - FechaInicio.Value
+                ? TimeHelper.Now - FechaInicio.Value
                 : null;
 
         public void IniciarTrabajo()
@@ -49,7 +49,7 @@ namespace PremierFlow.Domain.Entities
                 throw new InvalidOperationException("Solo se puede iniciar una asignación pendiente");
 
             Estado = EstadoAsignacion.EnProceso;
-            FechaInicio = DateTime.UtcNow;
+            FechaInicio = TimeHelper.Now;
         }
 
         public void Pausar()
@@ -74,7 +74,7 @@ namespace PremierFlow.Domain.Entities
                 throw new InvalidOperationException("Solo se puede completar un trabajo en proceso");
 
             Estado = EstadoAsignacion.Completado;
-            FechaFin = DateTime.UtcNow;
+            FechaFin = TimeHelper.Now;
         }
     }
 

@@ -2,6 +2,7 @@
 using PremierFlow.Application.Common;
 using PremierFlow.Application.Dtos.Taller;
 using PremierFlow.Application.Interfaces.Taller;
+using PremierFlow.Domain.Common;
 using PremierFlow.Domain.Entities;
 using System;
 using System.Collections.Generic;
@@ -29,7 +30,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             capacidad.PermiteAgendamiento = false;
             capacidad.Observaciones = motivo;
             capacidad.UsuarioModificaId = usuarioId;
-            capacidad.FechaModificacion = DateTime.UtcNow;
+            capacidad.FechaModificacion = TimeHelper.Now;
             await context.SaveChangesAsync();
             return ApiResponse<bool>.ok(true, "Día bloqueado exitosamente.");
         }
@@ -37,7 +38,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
         public async Task<ApiResponse<CapacidadTallerDTO>> CreateAsync(CreateCapacidadTallerDTO dto, string usuarioId)
         {
             //0. No permitir crear capacidad para fechas pasadas
-            if (dto.Fecha.Date < DateTime.UtcNow.Date)
+            if (dto.Fecha.Date < TimeHelper.Now.Date)
                 return ApiResponse<CapacidadTallerDTO>.fail(400, message: "No se puede crear capacidad para fechas anteriores a hoy.");
 
             //1. Validar si ya existe una capacidad para la misma fecha, turno y sucursal
@@ -81,7 +82,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 SucursalId = dto.SucursalId,
                 Activo = true,
                 UsuarioCreaId = usuarioId,
-                FechaCreacion = DateTime.UtcNow
+                FechaCreacion = TimeHelper.Now
             };
             capacidad.RecalcularCapacidad();
             context.CapacidadTaller.Add(capacidad);
@@ -103,7 +104,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 return ApiResponse<bool>.fail(404, message: "Capacidad de taller no encontrada.");
             capacidad.PermiteAgendamiento = true;
             capacidad.UsuarioModificaId = usuarioId;
-            capacidad.FechaModificacion = DateTime.UtcNow;
+            capacidad.FechaModificacion = TimeHelper.Now;
             context.SaveChanges();
             return ApiResponse<bool>.ok(true, "Día desbloqueado exitosamente.");   
 
@@ -112,7 +113,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
         public async Task<ApiResponse<List<CapacidadTallerDTO>>> GenerarCapacidadSemanalAsync(DateTime fechaInicio, CreateCapacidadTallerDTO plantilla, string usuarioId)
         {
             //No permitir generar semana para fechas pasadas
-            if (fechaInicio.Date < DateTime.UtcNow.Date)
+            if (fechaInicio.Date < TimeHelper.Now.Date)
                 return ApiResponse<List<CapacidadTallerDTO>>.fail(400, message: "No se puede generar capacidad para fechas anteriores a hoy.");
 
             var capacidades = new List<CapacidadTaller>();
@@ -145,7 +146,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                     SucursalId = plantilla.SucursalId,
                     Activo = true,
                     UsuarioCreaId = usuarioId,
-                    FechaCreacion = DateTime.UtcNow
+                    FechaCreacion = TimeHelper.Now
                 };
                 capacidad.RecalcularCapacidad();
                 context.CapacidadTaller.Add(capacidad);//agregar a la base de datos
@@ -276,7 +277,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             if(capacidad==null)
                 return ApiResponse<CapacidadTallerDTO>.fail(404, message: "Capacidad de taller no encontrada.");
 
-            if (capacidad.Fecha.Date < DateTime.Now.Date)
+            if (capacidad.Fecha.Date < TimeHelper.Now.Date)
                 return ApiResponse<CapacidadTallerDTO>.fail(400, null,
                     "No se puede editar la capacidad de una fecha que ya pasó.");
 
@@ -302,7 +303,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             capacidad.PermiteSobretiempo = dto.PermiteSobretiempo;
             capacidad.Observaciones = dto.Observaciones;
             capacidad.UsuarioModificaId = usuarioId;
-            capacidad.FechaModificacion = DateTime.UtcNow;
+            capacidad.FechaModificacion = TimeHelper.Now;
             await context.SaveChangesAsync();
 
             return ApiResponse<CapacidadTallerDTO>.ok(MapToDto(capacidad), "Capacidad actualizada exitosamente.");

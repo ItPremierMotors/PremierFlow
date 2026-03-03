@@ -3,6 +3,7 @@ using Microsoft.Extensions.Validation;
 using PremierFlow.Application.Common;
 using PremierFlow.Application.Dtos.Taller;
 using PremierFlow.Application.Interfaces.Taller;
+using PremierFlow.Domain.Common;
 using PremierFlow.Domain.Entities;
 using PremierFlow.Domain.Enums;
 using System;
@@ -230,17 +231,18 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             if (tieneCitaActiva)
                 return ApiResponse<CitaDTO>.fail(400, null, "El vehículo ya tiene una cita activa.");
 
-            // 5. Validar fecha
+            // 5. Validar fecha (las fechas del frontend son hora local, comparar con TimeHelper.Now)
             if (dto.TipoIngreso == TipoIngreso.WalkIn)
             {
                 // Walk-In: el cliente está presente, solo validar que sea hoy o futuro
-                if (dto.FechaHoraInicio.Date < DateTime.UtcNow.Date)
+                if (dto.FechaHoraInicio.Date < TimeHelper.Now.Date)
                     return ApiResponse<CitaDTO>.fail(400, null, "La fecha del Walk-In no puede ser anterior a hoy.");
             }
             else
             {
-                // Cita y Garantía: debe ser fecha/hora futura
-                if (dto.FechaHoraInicio <= DateTime.UtcNow)
+                // Cita y Garantía: permitir si el bloque horario aún no ha finalizado
+                var fechaHoraFinBloque = dto.FechaHoraInicio.AddMinutes(tipoServicio.DuracionEstimadaMin);
+                if (fechaHoraFinBloque <= TimeHelper.Now)
                     return ApiResponse<CitaDTO>.fail(400, null, "La fecha de la cita debe ser futura.");
             }
 
@@ -313,7 +315,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 BloqueHorarioId = bloque?.BloqueId,
                 Activo = true,
                 UsuarioCreaId = usuarioId,
-                FechaCreacion = DateTime.UtcNow
+                FechaCreacion = TimeHelper.Now
             };
 
             context.Citas.Add(cita);
@@ -363,18 +365,16 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             if (!cita.EstaActiva)
                 return ApiResponse<CitaDTO>.fail(400, null, "Solo pueden modificarse citas activas");
 
-            //validar fechas futuras
-            if (dto.FechaHoraInicio <= DateTime.Now)
-                return ApiResponse<CitaDTO>.fail(400, null, "la fecha de la cita debe ser futura");
-
-            //calcular nueva hora de fin
+            //validar fechas futuras (permitir si el bloque horario aún no ha finalizado)
             var nuevaFechaFin = dto.FechaHoraInicio.AddMinutes(cita.TipoServicio.DuracionEstimadaMin);
+            if (nuevaFechaFin <= TimeHelper.Now)
+                return ApiResponse<CitaDTO>.fail(400, null, "La fecha de la cita debe ser futura.");
 
             cita.FechaHoraInicio = dto.FechaHoraInicio;
             cita.FechaHoraFin = nuevaFechaFin;
             cita.MotivoVisita = dto.MotivoVisita;
             cita.UsuarioModificaId = usuarioId;
-            cita.FechaModificacion = DateTime.UtcNow;
+            cita.FechaModificacion = TimeHelper.Now;
 
             await context.SaveChangesAsync();
             return ApiResponse<CitaDTO>.ok(MapToDto(cita), "cita actualiada exictosamente");
@@ -392,7 +392,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
 
             cita.Confirmar();
             cita.UsuarioModificaId = usuarioId;
-            cita.FechaModificacion = DateTime.UtcNow;
+            cita.FechaModificacion = TimeHelper.Now;
 
             await context.SaveChangesAsync();
 
@@ -428,7 +428,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
 
             cita.Cancelar(dto.MotivoCancelacion);
             cita.UsuarioModificaId = usuarioId;
-            cita.FechaModificacion = DateTime.UtcNow;
+            cita.FechaModificacion = TimeHelper.Now;
 
             await context.SaveChangesAsync();
 
@@ -445,6 +445,10 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
 
             if (!cita.EstaActiva)
                 return ApiResponse<bool>.fail(400, null, "Solo se pueden marcar no-show citas activas.");
+
+            // Solo se puede marcar no-show el día de la cita
+            if (cita.FechaHoraInicio.Date != TimeHelper.Now.Date)
+                return ApiResponse<bool>.fail(400, null, "Solo se puede marcar no-show en la fecha programada de la cita.");
 
             // Incrementar contador de no-show del cliente
             cita.Cliente.IncrementarNoShow();
@@ -467,7 +471,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
 
             cita.MarcarNoShow();
             cita.UsuarioModificaId = usuarioId;
-            cita.FechaModificacion = DateTime.UtcNow;
+            cita.FechaModificacion = TimeHelper.Now;
 
             await context.SaveChangesAsync();
 
@@ -485,8 +489,12 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             if (!cita.PuedeConvertirseEnOs)
                 return ApiResponse<bool>.fail(400, null, "La cita no está en estado válido para iniciar atención.");
 
+            // Solo se puede iniciar atención el día de la cita
+            if (cita.FechaHoraInicio.Date != TimeHelper.Now.Date)
+                return ApiResponse<bool>.fail(400, null, "Solo se puede iniciar atención en la fecha programada de la cita.");
+
             // Actualizar horario al momento real de inicio
-            var ahora = DateTime.Now;
+            var ahora = TimeHelper.Now;
             var duracionRestante = cita.Duracion;
 
             // Si tiene minutos trabajados previos (transferencia), usar duracion restante
@@ -502,7 +510,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
 
             cita.IniciarProceso();
             cita.UsuarioModificaId = usuarioId;
-            cita.FechaModificacion = DateTime.UtcNow;
+            cita.FechaModificacion = TimeHelper.Now;
 
             await context.SaveChangesAsync();
 
@@ -523,7 +531,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
 
             cita.Completar();
             cita.UsuarioModificaId = usuarioId;
-            cita.FechaModificacion = DateTime.UtcNow;
+            cita.FechaModificacion = TimeHelper.Now;
 
             // Registrar minutos trabajados usando FK directa
             if (cita.CapacidadId.HasValue)
@@ -639,9 +647,9 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             cita.CapacidadId = capacidadManana.CapacidadId;
             cita.BloqueHorarioId = bloqueManana?.BloqueId;
             cita.Observaciones = (cita.Observaciones ?? "") +
-                $"\n[Transferida {DateTime.Now:dd/MM}] {dto.MinutosTrabajadosHoy} min trabajados, {minutosRestantes} min pendientes.";
+                $"\n[Transferida {TimeHelper.Now:dd/MM}] {dto.MinutosTrabajadosHoy} min trabajados, {minutosRestantes} min pendientes.";
             cita.UsuarioModificaId = usuarioId;
-            cita.FechaModificacion = DateTime.UtcNow;
+            cita.FechaModificacion = TimeHelper.Now;
             // Estado sigue siendo EnProceso — no cambia
 
             // 6. Reservar capacidad y bloque de mañana
@@ -666,7 +674,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
 
         private async Task<string> GenerarCodigoCitaAsync()
         {
-            var fecha = DateTime.Now;
+            var fecha = TimeHelper.Now;
             var prefijo = $"CIT-{fecha:yyyyMMdd}-";
 
             var ultimaCita = await context.Citas
@@ -688,7 +696,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
         }
         private async Task<string> GenerarPreOrdenIdAsync()
         {
-            var fecha = DateTime.Now;
+            var fecha = TimeHelper.Now;
             var prefijo = $"PRE-{fecha:yyyyMMdd}-";
 
             var ultimaPreOrden = await context.Citas

@@ -27,7 +27,7 @@ namespace PremierFlow.Domain.Entities
 
         public int ClienteId { get; set; }
 
-        public DateTime FechaApertura { get; set; } = DateTime.UtcNow;
+        public DateTime FechaApertura { get; set; } = TimeHelper.Now;
 
         public DateTime? FechaCierre { get; set; }
 
@@ -105,7 +105,7 @@ namespace PremierFlow.Domain.Entities
             if (!EstaAbierta)
                 throw new InvalidOperationException("La OS ya está cerrada o cancelada");
 
-            FechaCierre = DateTime.UtcNow;
+            FechaCierre = TimeHelper.Now;
             ObservacionesCierre = observaciones;
         }
     }

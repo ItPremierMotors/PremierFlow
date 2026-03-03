@@ -3,6 +3,7 @@ using PremierFlow.Application.Common;
 using PremierFlow.Application.Dtos.Catalogo;
 using PremierFlow.Application.Dtos.Taller;
 using PremierFlow.Application.Interfaces.Taller;
+using PremierFlow.Domain.Common;
 using PremierFlow.Domain.Entities;
 using PremierFlow.Domain.Enums;
 using System;
@@ -373,7 +374,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 CitaId = dto.CitaId,
                 VehiculoId = cita.VehiculoId,
                 ClienteId = cita.ClienteId,
-                FechaApertura = DateTime.UtcNow,
+                FechaApertura = TimeHelper.Now,
                 EstadoId = estadoAbierta.EstadoId,
                 KilometrajeIngreso = dto.KilometrajeIngreso,
                 NivelCombustible = dto.NivelCombustible,
@@ -385,7 +386,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 SucursalId = cita.SucursalId,
                 Activo = true,
                 UsuarioCreaId = usuarioId,
-                FechaCreacion = DateTime.UtcNow
+                FechaCreacion = TimeHelper.Now
             };
 
             context.OrdenesServicio.Add(os);
@@ -401,7 +402,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 Observaciones = cita.MotivoVisita,
                 Activo = true,
                 UsuarioCreaId = usuarioId,
-                FechaCreacion = DateTime.UtcNow
+                FechaCreacion = TimeHelper.Now
             };
             servicioCita.CalcularSubtotal();
             os.Servicios.Add(servicioCita);
@@ -482,7 +483,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 CitaId = null,  // Walk-in no tiene cita
                 VehiculoId = dto.VehiculoId,
                 ClienteId = dto.ClienteId,
-                FechaApertura = DateTime.UtcNow,
+                FechaApertura = TimeHelper.Now,
                 EstadoId = estadoAbierta.EstadoId,
                 KilometrajeIngreso = dto.KilometrajeIngreso,
                 NivelCombustible = dto.NivelCombustible,
@@ -494,7 +495,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 SucursalId = dto.SucursalId,
                 Activo = true,
                 UsuarioCreaId = usuarioId,
-                FechaCreacion = DateTime.UtcNow
+                FechaCreacion = TimeHelper.Now
             };
 
             context.OrdenesServicio.Add(os);
@@ -538,7 +539,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             os.AsesorId = dto.AsesorId;
             os.CoordinadorId = dto.CoordinadorId;
             os.UsuarioModificaId = usuarioId;
-            os.FechaModificacion = DateTime.UtcNow;
+            os.FechaModificacion = TimeHelper.Now;
 
             await context.SaveChangesAsync();
 
@@ -549,6 +550,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
         {
             var os = await context.OrdenesServicio
                 .Include(o => o.Estado)
+                .Include(o => o.Cita)
                 .FirstOrDefaultAsync(o => o.OsId == dto.OsId && o.Activo);
 
             if (os == null)
@@ -569,13 +571,21 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
 
             os.EstadoId = dto.NuevoEstadoId;
             os.UsuarioModificaId = usuarioId;
-            os.FechaModificacion = DateTime.UtcNow;
+            os.FechaModificacion = TimeHelper.Now;
 
             if (!string.IsNullOrEmpty(dto.Observaciones))
             {
                 os.ObservacionesApertura = string.IsNullOrEmpty(os.ObservacionesApertura)
                     ? dto.Observaciones
                     : $"{os.ObservacionesApertura}\n{dto.Observaciones}";
+            }
+
+            // Si se está cerrando, sincronizar Cita
+            if (nuevoEstado.Codigo == EstadoOs.Estados.Cerrada)
+            {
+                os.Cerrar();
+                if (os.Cita != null && os.Cita.Estado == EstadoCita.EnProceso)
+                    os.Cita.Completar();
             }
 
             await context.SaveChangesAsync();
@@ -614,7 +624,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             os.Cerrar(dto.ObservacionesCierre);
             os.EstadoId = estadoCerrada.EstadoId;
             os.UsuarioModificaId = usuarioId;
-            os.FechaModificacion = DateTime.UtcNow;
+            os.FechaModificacion = TimeHelper.Now;
 
             // Recalcular totales
             os.CalcularTotales();
@@ -670,9 +680,9 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
 
             os.EstadoId = estadoCancelada.EstadoId;
             os.ObservacionesCierre = motivo;
-            os.FechaCierre = DateTime.UtcNow;
+            os.FechaCierre = TimeHelper.Now;
             os.UsuarioModificaId = usuarioId;
-            os.FechaModificacion = DateTime.UtcNow;
+            os.FechaModificacion = TimeHelper.Now;
 
             // Cancelar cita si existe
             if (os.Cita != null && os.Cita.EstaActiva)
@@ -738,7 +748,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
 
         private async Task<string> GenerarNumeroOsAsync()
         {
-            var fecha = DateTime.Now;
+            var fecha = TimeHelper.Now;
             var prefijo = $"OS-{fecha:yyyyMMdd}-";
 
             var ultimaOs = await context.OrdenesServicio

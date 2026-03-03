@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using PremierFlow.Application.Common;
 using PremierFlow.Application.Dtos.Vehiculos;
 using PremierFlow.Application.Interfaces.Vehiculo;
+using PremierFlow.Domain.Common;
 using PremierFlow.Domain.Entities;
 using PremierFlow.Domain.Enums;
 using PremierFlow.Infrastructure.Identity;
@@ -34,7 +35,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
 
             vehiculo.ActualizarKilometraje(nuevoKm);
             vehiculo.UsuarioModificaId = usuarioId;
-            vehiculo.FechaModificacion = DateTime.UtcNow;
+            vehiculo.FechaModificacion = TimeHelper.Now;
 
             await context.SaveChangesAsync();
 
@@ -67,8 +68,8 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
             if (nuevoEstado == EstadoVehiculo.Reservado)
             {
                 vehiculo.ReservadoPorId = usuarioId;
-                vehiculo.FechaReserva = DateTime.UtcNow;
-                vehiculo.FechaLimiteReserva = DateTime.UtcNow.AddDays(10);
+                vehiculo.FechaReserva = TimeHelper.Now;
+                vehiculo.FechaLimiteReserva = TimeHelper.Now.AddDays(10);
                 if (!string.IsNullOrEmpty(vendedorId))
                     vehiculo.VendedorId = vendedorId;
                 if (clienteId.HasValue)
@@ -101,19 +102,19 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
             // Entrando a Vendido: auto-set FechaVenta y FechaMaximaEntrega
             if (nuevoEstado == EstadoVehiculo.Vendido)
             {
-                vehiculo.FechaVenta = DateTime.UtcNow;
-                vehiculo.FechaMaximaEntrega = AgregarDiasHabiles(DateTime.UtcNow, 7);
+                vehiculo.FechaVenta = TimeHelper.Now;
+                vehiculo.FechaMaximaEntrega = AgregarDiasHabiles(TimeHelper.Now, 7);
             }
 
             // Entrando a Entregado: auto-set FechaEntrega
             if (nuevoEstado == EstadoVehiculo.Entregado)
             {
-                vehiculo.FechaEntrega = DateTime.UtcNow;
+                vehiculo.FechaEntrega = TimeHelper.Now;
             }
 
             vehiculo.Estado = nuevoEstado;
             vehiculo.UsuarioModificaId = usuarioId;
-            vehiculo.FechaModificacion = DateTime.UtcNow;
+            vehiculo.FechaModificacion = TimeHelper.Now;
 
             await context.SaveChangesAsync();
 
@@ -189,10 +190,10 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
                 FechaPrimeraMatricula = dto.FechaPrimeraMatricula,
                 GarantiaHasta = dto.GarantiaHasta,
                 Observaciones = dto.Observaciones,
-                FechaRegistro = DateTime.UtcNow,
+                FechaRegistro = TimeHelper.Now,
                 Activo = true,
                 UsuarioCreaId = usuarioId,
-                FechaCreacion = DateTime.UtcNow
+                FechaCreacion = TimeHelper.Now
             };
             context.Vehiculos.Add(vehiculo);
             await context.SaveChangesAsync();
@@ -245,7 +246,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
 
             vehiculo.Activo = false;
             vehiculo.UsuarioModificaId = usuarioId;
-            vehiculo.FechaModificacion = DateTime.UtcNow;
+            vehiculo.FechaModificacion = TimeHelper.Now;
 
             await context.SaveChangesAsync();
 
@@ -546,7 +547,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
             vehiculo.GarantiaHasta = dto.GarantiaHasta;
             vehiculo.Observaciones = dto.Observaciones;
             vehiculo.UsuarioModificaId = usuarioId;
-            vehiculo.FechaModificacion = DateTime.UtcNow;
+            vehiculo.FechaModificacion = TimeHelper.Now;
 
             await context.SaveChangesAsync();
 
@@ -565,7 +566,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
 
         public async Task<ApiResponse<int>> CancelarReservasVencidasAsync(string usuarioId)
         {
-            var ahora = DateTime.UtcNow;
+            var ahora = TimeHelper.Now;
             var vencidas = await context.Vehiculos
                 .Where(v => v.Activo
                           && v.Estado == EstadoVehiculo.Reservado
@@ -693,10 +694,10 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
                     FechaPrimeraMatricula = dto.FechaPrimeraMatricula,
                     GarantiaHasta = dto.GarantiaHasta,
                     Observaciones = dto.Observaciones,
-                    FechaRegistro = DateTime.UtcNow,
+                    FechaRegistro = TimeHelper.Now,
                     Activo = true,
                     UsuarioCreaId = usuarioId,
-                    FechaCreacion = DateTime.UtcNow
+                    FechaCreacion = TimeHelper.Now
                 };
 
                 vehiculosParaInsertar.Add((vehiculo, i));
@@ -904,12 +905,12 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
                 case EstadoVehiculo.Vendido:
                     if (!vehiculo.ClienteId.HasValue) faltantes.Add("Cliente");
                     if (!vehiculo.PrecioVenta.HasValue || vehiculo.PrecioVenta <= 0) faltantes.Add("Precio de venta");
-                    if (!vehiculo.FechaVenta.HasValue) faltantes.Add("Fecha de venta");
+                    // FechaVenta se auto-asigna al cambiar estado
                     if (string.IsNullOrEmpty(vehiculo.VendedorId)) faltantes.Add("Vendedor");
                     break;
 
                 case EstadoVehiculo.Entregado:
-                    if (!vehiculo.FechaEntrega.HasValue) faltantes.Add("Fecha de entrega");
+                    // FechaEntrega se auto-asigna al cambiar estado
                     break;
             }
 

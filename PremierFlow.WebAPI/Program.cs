@@ -84,6 +84,9 @@ app.UseHttpsRedirection();
 // IMPORTANTE: CORS debe ir antes de Authorization
 app.UseCors("AllowSmartAdmin");
 
+// Servir archivos estáticos (evidencias, uploads, etc.)
+app.UseStaticFiles();
+
 app.UseAuthentication(); //habilitar autenticacion ya que ahora si usa jwt
 app.UseAuthorization();
  

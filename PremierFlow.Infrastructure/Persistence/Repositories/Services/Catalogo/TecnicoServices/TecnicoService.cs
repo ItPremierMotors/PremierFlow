@@ -4,6 +4,7 @@ using PremierFlow.Application.Dtos.Catalogo;
 using PremierFlow.Application.Dtos.User;
 using PremierFlow.Application.Interfaces.Auth;
 using PremierFlow.Application.Interfaces.Catalogo;
+using PremierFlow.Domain.Common;
 using PremierFlow.Domain.Entities;
 
 namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Catalogo.TecnicoServices
@@ -66,7 +67,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Catalogo.
                 UsuarioId = nuevoUsuarioId,
                 SucursalId = dto.SucursalId,
                 Activo = true,
-                FechaCreacion = DateTime.UtcNow,
+                FechaCreacion = TimeHelper.Now,
                 UsuarioCreaId = usuarioId
             };
             context.Tecnicos.Add(tecnico);
@@ -97,7 +98,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Catalogo.
             //3. eliminar (desactivar)
             tecnico.Activo = false;
             tecnico.UsuarioModificaId = usuarioId;
-            tecnico.FechaModificacion = DateTime.UtcNow;
+            tecnico.FechaModificacion = TimeHelper.Now;
 
             await context.SaveChangesAsync();
             return ApiResponse<bool>.ok(true, "Técnico eliminado exitosamente.");
@@ -233,7 +234,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Catalogo.
             tecnico.UsuarioId = dto.UsuarioId;
             tecnico.SucursalId = dto.SucursalId;
             tecnico.UsuarioModificaId = usuarioId;
-            tecnico.FechaModificacion = DateTime.UtcNow;
+            tecnico.FechaModificacion = TimeHelper.Now;
 
             await context.SaveChangesAsync();
 

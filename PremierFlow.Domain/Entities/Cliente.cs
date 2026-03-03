@@ -24,7 +24,7 @@ namespace PremierFlow.Domain.Entities
         public string? Email { get; set; }
         public string? Direccion { get; set; }
         public string? Ciudad { get; set; }
-        public DateTime FechaRegistro { get; set; } = DateTime.UtcNow;
+        public DateTime FechaRegistro { get; set; } = TimeHelper.Now;
 
         /// <summary>
         /// Contador de inasistencias (no-show).

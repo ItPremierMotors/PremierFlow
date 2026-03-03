@@ -2,6 +2,7 @@
 using PremierFlow.Application.Common;
 using PremierFlow.Application.Dtos.Cliente;
 using PremierFlow.Application.Interfaces.Cliente;
+using PremierFlow.Domain.Common;
 using PremierFlow.Domain.Entities;
 using System;
 using System.Collections.Generic;
@@ -53,11 +54,11 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Cliente
                 Email = dto.Email,
                 Direccion = dto.Direccion,
                 Ciudad = dto.Ciudad,
-                FechaRegistro = DateTime.UtcNow,
+                FechaRegistro = TimeHelper.Now,
                 NoShowCount = 0,
                 Activo = true,
                 UsuarioCreaId = usuarioId,
-                FechaCreacion = DateTime.UtcNow
+                FechaCreacion = TimeHelper.Now
             };
 
             context.Clientes.Add(cliente);
@@ -85,7 +86,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Cliente
             // 3. Soft delete
             cliente.Activo = false;
             cliente.UsuarioModificaId = usuarioId;
-            cliente.FechaModificacion = DateTime.UtcNow;
+            cliente.FechaModificacion = TimeHelper.Now;
 
             await context.SaveChangesAsync();
 
@@ -228,7 +229,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Cliente
             cliente.Direccion = dto.Direccion;
             cliente.Ciudad = dto.Ciudad;
             cliente.UsuarioModificaId = usuarioId;
-            cliente.FechaModificacion = DateTime.UtcNow;
+            cliente.FechaModificacion = TimeHelper.Now;
 
             await context.SaveChangesAsync();
 

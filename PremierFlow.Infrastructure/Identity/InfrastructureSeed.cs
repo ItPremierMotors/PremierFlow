@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using PremierFlow.Application;
+using PremierFlow.Domain.Common;
 using PremierFlow.Domain.Entities;
 using PremierFlow.Infrastructure.Persistence;
 using System;
@@ -52,7 +53,7 @@ namespace PremierFlow.Infrastructure.Identity
                     Departamento = "Tecnología",
                     Cargo = "Administrador",
                     Activo = true,
-                    FechaCreacion = DateTime.UtcNow
+                    FechaCreacion = TimeHelper.Now
                 };
                 var result = await userManager.CreateAsync(adminUser, adminPassword);
                 if (result.Succeeded)

@@ -15,7 +15,7 @@ namespace PremierFlow.Domain.Entities
 
         public int OsId { get; set; }
 
-        public DateTime FechaHoraRecepcion { get; set; } = DateTime.UtcNow;
+        public DateTime FechaHoraRecepcion { get; set; } = TimeHelper.Now;
 
         /// <summary>
         /// FK a ApplicationUser que recibe el vehículo.

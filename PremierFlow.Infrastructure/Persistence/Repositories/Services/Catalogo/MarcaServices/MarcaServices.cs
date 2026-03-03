@@ -2,6 +2,7 @@
 using PremierFlow.Application.Common;
 using PremierFlow.Application.Dtos.Marcas;
 using PremierFlow.Application.Interfaces.Catalogo;
+using PremierFlow.Domain.Common;
 using PremierFlow.Domain.Entities;
 using System;
 using System.Collections.Generic;
@@ -33,7 +34,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Catalogo.
                 LogoUrl = marcaDto.LogoUrl,
                 Observaciones = marcaDto.Observaciones,
                 Activo = true,
-                FechaCreacion = DateTime.UtcNow,
+                FechaCreacion = TimeHelper.Now,
                 UsuarioCreaId = UsuarioID // TODO: Reemplazar con el usuario actual
             };
 
@@ -110,7 +111,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Catalogo.
             marca.LogoUrl = marcaDto.LogoUrl;
             marca.Observaciones = marcaDto.Observaciones;
 
-            marca.FechaModificacion = DateTime.UtcNow;
+            marca.FechaModificacion = TimeHelper.Now;
             marca.UsuarioModificaId = UsuarioID; // TODO: Reemplazar con el usuario actual
 
             //4. Guardar los cambios en la base de datos
@@ -133,7 +134,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Catalogo.
             if (tieneModelosAsociados)
                 return ApiResponse<bool>.fail(400, null, "No se puede eliminar la marca porque tiene modelos asociados.");
             marca.Activo = false;
-            marca.FechaModificacion = DateTime.UtcNow;
+            marca.FechaModificacion = TimeHelper.Now;
             marca.UsuarioModificaId = UsuarioID; // TODO: Reemplazar con el usuario actual
             await context.SaveChangesAsync();
             return ApiResponse<bool>.ok(true, "Marca eliminada exitosamente.");

@@ -2,6 +2,7 @@
 using PremierFlow.Application.Common;
 using PremierFlow.Application.Dtos.Catalogo;
 using PremierFlow.Application.Interfaces.Catalogo;
+using PremierFlow.Domain.Common;
 using PremierFlow.Domain.Entities;
 using System;
 using System.Collections.Generic;
@@ -35,7 +36,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Catalogo.
                 Descripcion = dto.Descripcion,
                 ImagenUrl = dto.ImagenUrl,
                 Activo = true,
-                FechaCreacion = DateTime.UtcNow,
+                FechaCreacion = TimeHelper.Now,
                 UsuarioCreaId = usuarioId
             };
 
@@ -58,7 +59,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Catalogo.
                 return ApiResponse<bool>.fail(400, null, "No se puede eliminar el modelo porque tiene vehículos asociados.");
             
             modelo.Activo = false;
-            modelo.FechaModificacion = DateTime.UtcNow;
+            modelo.FechaModificacion = TimeHelper.Now;
             modelo.UsuarioModificaId = usuarioId;
             await context.SaveChangesAsync();
             return ApiResponse<bool>.ok(true, "Modelo eliminado exitosamente.");
@@ -155,7 +156,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Catalogo.
             marca.AnioFin = dto.AnioFin;
             marca.Descripcion = dto.Descripcion;
             marca.ImagenUrl = dto.ImagenUrl;
-            marca.FechaModificacion = DateTime.UtcNow;
+            marca.FechaModificacion = TimeHelper.Now;
             marca.UsuarioModificaId = usuarioId;
             await context.SaveChangesAsync();
 
