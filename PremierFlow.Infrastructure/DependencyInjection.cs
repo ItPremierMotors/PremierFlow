@@ -95,6 +95,7 @@ namespace PremierFlow.Infrastructure
             services.AddScoped<IAuth, AuthService>();
             services.AddScoped<IUserService, UserService>();
             services.AddScoped<IRoleService, RoleService>();
+            services.AddScoped<IRoleClaimService, RoleClaimService>();
             return services;
         }
        

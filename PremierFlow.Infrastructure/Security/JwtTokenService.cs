@@ -16,10 +16,12 @@ namespace PremierFlow.Infrastructure.Security
 
         private readonly IConfiguration configuration;
         private readonly UserManager<ApplicationUser> userManager;
-        public JwtTokenService(IConfiguration _configuration, UserManager<ApplicationUser> _userManager)
+        private readonly RoleManager<IdentityRole> roleManager;
+        public JwtTokenService(IConfiguration _configuration, UserManager<ApplicationUser> _userManager, RoleManager<IdentityRole> _roleManager)
         {
             configuration=_configuration;
             userManager=_userManager;
+            roleManager=_roleManager;
         }
         public async Task<string> GenerateTokenAsync(ApplicationUser user)
         {
@@ -38,6 +40,15 @@ namespace PremierFlow.Infrastructure.Security
             foreach (var role in roles)
             {
                 authClaims.Add(new Claim(ClaimTypes.Role, role)); //AGREGAR LOS ROLES A LOS CLAIMS
+                var roleEntity = await roleManager.FindByNameAsync(role); //OBTENER LA ENTIDAD DEL ROL
+                if (roleEntity != null)
+                {
+                    var roleClaims = await roleManager.GetClaimsAsync(roleEntity); //OBTENER LOS CLAIMS DEL ROL
+                    foreach (var roleClaim in roleClaims)
+                    {
+                        authClaims.Add(roleClaim); //AGREGAR LOS CLAIMS DEL ROL A LOS CLAIMS DEL TOKEN
+                    }
+                }
             }
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["Jwt:key"]!)); //LLAVE SECRETA PARA FIRMAR EL TOKEN

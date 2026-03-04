@@ -1,0 +1,96 @@
+namespace PremierFlow.Application.Common
+{
+    public static class Permissions
+    {
+        // Órdenes de Servicio
+        public const string OrdenServicioVer = "OrdenServicio.Ver";
+        public const string OrdenServicioCrear = "OrdenServicio.Crear";
+        public const string OrdenServicioEditar = "OrdenServicio.Editar";
+        public const string OrdenServicioEliminar = "OrdenServicio.Eliminar";
+
+        // Inventario / Vehículos
+        public const string InventarioVer = "Inventario.Ver";
+        public const string InventarioCrear = "Inventario.Crear";
+        public const string InventarioEditar = "Inventario.Editar";
+        public const string InventarioEliminar = "Inventario.Eliminar";
+
+        // Catalogo / marca
+        public const string CatalogoMarcaVer = "Catalogo.Marca.Ver";
+        public const string CatalogoMarcaCrear = "Catalogo.Marca.Crear";
+        public const string CatalogoMarcaEditar = "Catalogo.Marca.Editar";
+        public const string CatalogoMarcaEliminar = "Catalogo.Marca.Eliminar";
+        // Catalogo / modelo
+        public const string CatalogoModeloVer = "Catalogo.Modelo.Ver";
+        public const string CatalogoModeloCrear = "Catalogo.Modelo.Crear";
+        public const string CatalogoModeloEditar = "Catalogo.Modelo.Editar";
+        public const string CatalogoModeloEliminar = "Catalogo.Modelo.Eliminar";
+        //catalogo /versión
+        public const string CatalogoVersionVer = "Catalogo.Version.Ver";
+        public const string CatalogoVersionCrear = "Catalogo.Version.Crear";
+        public const string CatalogoVersionEditar = "Catalogo.Version.Editar";
+        public const string CatalogoVersionEliminar = "Catalogo.Version.Eliminar";
+        // Catalogo / servicio
+        public const string CatalogoServicioVer = "Catalogo.Servicio.Ver";
+        public const string CatalogoServicioCrear = "Catalogo.Servicio.Crear";
+        public const string CatalogoServicioEditar = "Catalogo.Servicio.Editar";
+        public const string CatalogoServicioEliminar = "Catalogo.Servicio.Eliminar";
+        //catalogo /tecnico
+        public const string CatalogoTecnicoVer = "Catalogo.Tecnico.Ver";
+        public const string CatalogoTecnicoCrear = "Catalogo.Tecnico.Crear";
+        public const string CatalogoTecnicoEditar = "Catalogo.Tecnico.Editar";
+        public const string CatalogoTecnicoEliminar = "Catalogo.Tecnico.Eliminar";
+
+        // Clientes
+        public const string ClienteVer = "Cliente.Ver";
+        public const string ClienteCrear = "Cliente.Crear";
+        public const string ClienteEditar = "Cliente.Editar";
+        public const string ClienteEliminar = "Cliente.Eliminar";
+
+        // Citas
+        public const string CitaVer = "Cita.Ver";
+        public const string CitaCrear = "Cita.Crear";
+        public const string CitaEditar = "Cita.Editar";
+        public const string CitaEliminar = "Cita.Eliminar";
+
+        // Recepción
+        public const string RecepcionVer = "Recepcion.Ver";
+        public const string RecepcionCrear = "Recepcion.Crear";
+        public const string RecepcionEditar = "Recepcion.Editar";
+
+        // Técnicos / Asignaciones
+        public const string TecnicoVer = "Tecnico.Ver";
+        public const string TecnicoAsignar = "Tecnico.Asignar";
+
+        // Reportes
+        public const string ReporteVer = "Reporte.Ver";
+
+        // Usuarios y Roles (admin)
+        public const string UsuarioVer = "Usuario.Ver";
+        public const string UsuarioCrear = "Usuario.Crear";
+        public const string UsuarioEditar = "Usuario.Editar";
+        public const string RolVer = "Rol.Ver";
+        public const string RolCrear = "Rol.Crear";
+        public const string RolEditar = "Rol.Editar";
+        public const string PermisoVer = "Permiso.Ver";
+        public const string PermisoEditar = "Permiso.Editar";
+
+        public static List<string> All => new()
+        {
+            OrdenServicioVer, OrdenServicioCrear, OrdenServicioEditar, OrdenServicioEliminar,
+            InventarioVer, InventarioCrear, InventarioEditar, InventarioEliminar,
+            ClienteVer, ClienteCrear, ClienteEditar, ClienteEliminar,
+            CitaVer, CitaCrear, CitaEditar, CitaEliminar,
+            RecepcionVer, RecepcionCrear, RecepcionEditar,
+            TecnicoVer, TecnicoAsignar,
+            ReporteVer,
+            UsuarioVer, UsuarioCrear, UsuarioEditar,
+            RolVer, RolCrear, RolEditar,
+            PermisoVer, PermisoEditar,
+            CatalogoMarcaCrear, CatalogoMarcaEditar, CatalogoMarcaEliminar,
+            CatalogoModeloVer, CatalogoModeloCrear, CatalogoModeloEditar, CatalogoModeloEliminar,
+            CatalogoVersionVer, CatalogoVersionCrear, CatalogoVersionEditar, CatalogoVersionEliminar,
+            CatalogoServicioVer, CatalogoServicioCrear, CatalogoServicioEditar, CatalogoServicioEliminar,
+            CatalogoTecnicoVer, CatalogoTecnicoCrear, CatalogoTecnicoEditar, CatalogoTecnicoEliminar
+        };
+    }
+}

@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.OpenApi;
 using PremierFlow.Infrastructure;
+using PremierFlow.Infrastructure.Security;
 using Scalar.AspNetCore;
 using System.Text;
 
@@ -42,20 +44,24 @@ builder.Services.AddAuthentication(options =>
              ClockSkew = TimeSpan.Zero //eliminar el tiempo de tolerancia para la expiracion del token
          };
 });
-    // CORS - Permitir que SmartAdmin acceda a la API
-    builder.Services.AddCors(options =>
-    {
-        options.AddPolicy("AllowSmartAdmin",
-            policy => policy
-                .WithOrigins(
-                    "https://localhost:7003",  // Puerto HTTPS de SmartAdmin
-                    "http://localhost:5003"    // Puerto HTTP de SmartAdmin,
-                    
-                )
-                .AllowAnyMethod()
-                .AllowAnyHeader()
-                .AllowCredentials());
-    });
+
+builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>(); //registrar el proveedor de politicas de autorizacion personalizado
+
+// CORS - Permitir que SmartAdmin acceda a la API
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowSmartAdmin",
+        policy => policy
+        .WithOrigins(
+            "https://localhost:7003",  // Puerto HTTPS de SmartAdmin
+            "http://localhost:5003"    // Puerto HTTP de SmartAdmin,
+            
+        )
+        .AllowAnyMethod()
+        .AllowAnyHeader()
+        .AllowCredentials()
+    );
+});
 
 var app = builder.Build();
 
