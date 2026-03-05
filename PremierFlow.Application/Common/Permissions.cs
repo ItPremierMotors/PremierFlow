@@ -46,11 +46,27 @@ namespace PremierFlow.Application.Common
         public const string ClienteEditar = "Cliente.Editar";
         public const string ClienteEliminar = "Cliente.Eliminar";
 
+        // Ventas
+        public const string VentaVer = "Venta.Ver";
+        public const string VentaCrear = "Venta.Crear";
+        public const string VentaEditar = "Venta.Editar";
+        public const string VentaEliminar = "Venta.Eliminar";
+
+        // Flota
+        public const string FlotaVer = "Flota.Ver";
+        public const string FlotaVerHistorial = "Flota.VerHistorial";
+
         // Citas
         public const string CitaVer = "Cita.Ver";
         public const string CitaCrear = "Cita.Crear";
         public const string CitaEditar = "Cita.Editar";
         public const string CitaEliminar = "Cita.Eliminar";
+
+        // Capacidad del Taller
+        public const string CapacidadVer = "Capacidad.Ver";
+        public const string CapacidadCrear = "Capacidad.Crear";
+        public const string CapacidadEditar = "Capacidad.Editar";
+        public const string CapacidadEliminar = "Capacidad.Eliminar";
 
         // Recepción
         public const string RecepcionVer = "Recepcion.Ver";
@@ -63,6 +79,9 @@ namespace PremierFlow.Application.Common
 
         // Reportes
         public const string ReporteVer = "Reporte.Ver";
+
+        // Dashboard
+        public const string DashboardVer = "Dashboard.Ver";
 
         // Usuarios y Roles (admin)
         public const string UsuarioVer = "Usuario.Ver";
@@ -79,14 +98,18 @@ namespace PremierFlow.Application.Common
             OrdenServicioVer, OrdenServicioCrear, OrdenServicioEditar, OrdenServicioEliminar,
             InventarioVer, InventarioCrear, InventarioEditar, InventarioEliminar,
             ClienteVer, ClienteCrear, ClienteEditar, ClienteEliminar,
+            VentaVer, VentaCrear, VentaEditar, VentaEliminar,
+            FlotaVer, FlotaVerHistorial,
+            CapacidadVer, CapacidadCrear, CapacidadEditar, CapacidadEliminar,
             CitaVer, CitaCrear, CitaEditar, CitaEliminar,
             RecepcionVer, RecepcionCrear, RecepcionEditar,
             TecnicoVer, TecnicoAsignar,
             ReporteVer,
+            DashboardVer,
             UsuarioVer, UsuarioCrear, UsuarioEditar,
             RolVer, RolCrear, RolEditar,
             PermisoVer, PermisoEditar,
-            CatalogoMarcaCrear, CatalogoMarcaEditar, CatalogoMarcaEliminar,
+            CatalogoMarcaVer, CatalogoMarcaCrear, CatalogoMarcaEditar, CatalogoMarcaEliminar,
             CatalogoModeloVer, CatalogoModeloCrear, CatalogoModeloEditar, CatalogoModeloEliminar,
             CatalogoVersionVer, CatalogoVersionCrear, CatalogoVersionEditar, CatalogoVersionEliminar,
             CatalogoServicioVer, CatalogoServicioCrear, CatalogoServicioEditar, CatalogoServicioEliminar,

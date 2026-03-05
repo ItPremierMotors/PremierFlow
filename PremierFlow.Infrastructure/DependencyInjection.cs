@@ -21,6 +21,8 @@ using PremierFlow.Infrastructure.Persistence.Repositories.Services.Catalogo.Vers
 using PremierFlow.Infrastructure.Persistence.Repositories.Services.Cliente;
 using PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller;
 using PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoService;
+using PremierFlow.Application.Interfaces.Dashboard;
+using PremierFlow.Infrastructure.Persistence.Repositories.Services.Dashboard;
 using PremierFlow.Infrastructure.Security;
 
 namespace PremierFlow.Infrastructure
@@ -89,6 +91,9 @@ namespace PremierFlow.Infrastructure
             services.AddScoped<IOsServicioService, OsServicioService>();
             services.AddScoped<IAsignacionTecnicoService, AsignacionTecnicoService>();
             services.AddScoped<IEvidenciaService, EvidenciaService>();
+
+            // Fase 4: Dashboard
+            services.AddScoped<IDashboardService, DashboardService>();
 
             //servicio de seguridad
             services.AddScoped<IJwtTokenService, JwtTokenService>();
