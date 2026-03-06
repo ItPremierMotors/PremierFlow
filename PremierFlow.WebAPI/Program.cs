@@ -74,7 +74,6 @@ using(var scope = app.Services.CreateScope())
    await DependencyInjection.InitializeDatabaseAsync(services);
 }
 
-gir 
 
 
 // Configure the HTTP request pipeline.
