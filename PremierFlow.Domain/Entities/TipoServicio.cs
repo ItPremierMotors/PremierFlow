@@ -49,8 +49,6 @@ namespace PremierFlow.Domain.Entities
         public virtual ICollection<OsServicio> OsServicios { get; set; } = new List<OsServicio>();
 
         // Métodos de dominio
-        public bool EsServicioRapido => Clasificacion == ClasificacionServicio.Rapido;
-
         public TimeSpan DuracionEstimada => TimeSpan.FromMinutes(DuracionEstimadaMin);
     }
 

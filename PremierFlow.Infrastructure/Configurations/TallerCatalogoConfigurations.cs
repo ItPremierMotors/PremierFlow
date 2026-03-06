@@ -32,7 +32,6 @@ namespace PremierFlow.Infrastructure.Configurations
             builder.Property(e => e.FechaModificacion).HasColumnName("fecha_modificacion");
 
             builder.HasIndex(e => e.Codigo).IsUnique().HasFilter("[activo] = 1");
-            builder.Ignore(e => e.EsServicioRapido);
             builder.Ignore(e => e.DuracionEstimada);
         }
     }

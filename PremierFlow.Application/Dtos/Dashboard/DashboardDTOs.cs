@@ -67,6 +67,8 @@ namespace PremierFlow.Application.Dtos.Dashboard
         public int MinutosDisponibles { get; set; }
         public int MinutosReservados { get; set; }
         public int MinutosUtilizados { get; set; }
+        public decimal PorcentajeOcupacion { get; set; }
+        public decimal PorcentajeEficiencia { get; set; }
     }
 
     // =============================================

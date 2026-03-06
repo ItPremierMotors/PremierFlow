@@ -38,8 +38,6 @@ namespace PremierFlow.Domain.Entities
 
         public TimeSpan Duracion => HoraFin - HoraInicio;
 
-        public bool ContieneHora(TimeSpan hora) => hora >= HoraInicio && hora < HoraFin;
-
         public void AgendarVehiculo()
         {
             if (!TieneEspacioDisponible)

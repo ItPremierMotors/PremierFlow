@@ -18,15 +18,21 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Dashboard
             this.context = context;
         }
 
-        public async Task<ApiResponse<DashboardResumenDTO>> GetResumenAsync()
+        public async Task<ApiResponse<DashboardResumenDTO>> GetResumenAsync(int? sucursalId = null)
         {
             var hoy = TimeHelper.Today;
             var inicioMes = new DateTime(hoy.Year, hoy.Month, 1);
             var finMes = inicioMes.AddMonths(1);
 
+            // Base query de vehículos filtrada por sucursal
+            var vehiculosBase = context.Vehiculos.AsNoTracking()
+                .Where(v => v.Activo);
+            if (sucursalId.HasValue)
+                vehiculosBase = vehiculosBase.Where(v => v.Ubicacion != null && v.Ubicacion.SucursalID == sucursalId.Value);
+
             // Ventas del mes
-            var ventasMes = await context.Vehiculos.AsNoTracking()
-                .Where(v => v.Activo && v.FechaVenta.HasValue
+            var ventasMes = await vehiculosBase
+                .Where(v => v.FechaVenta.HasValue
                     && v.FechaVenta.Value >= inicioMes
                     && v.FechaVenta.Value < finMes)
                 .GroupBy(v => 1)
@@ -38,23 +44,34 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Dashboard
                 .FirstOrDefaultAsync();
 
             // Órdenes activas (no cerrada ni cancelada)
-            var ordenesActivas = await context.OrdenesServicio.AsNoTracking()
+            var ordenesQuery = context.OrdenesServicio.AsNoTracking()
                 .Include(o => o.Estado)
                 .Where(o => o.Activo
                     && o.Estado.Codigo != EstadoOs.Estados.Cerrada
-                    && o.Estado.Codigo != EstadoOs.Estados.Cancelada)
-                .CountAsync();
+                    && o.Estado.Codigo != EstadoOs.Estados.Cancelada);
+            if (sucursalId.HasValue)
+                ordenesQuery = ordenesQuery.Where(o => o.SucursalId == sucursalId.Value);
+
+            var ordenesActivas = await ordenesQuery.CountAsync();
 
             // Citas del día agrupadas por estado
-            var citasHoy = await context.Citas.AsNoTracking()
-                .Where(c => c.Activo && c.FechaHoraInicio.Date == hoy)
+            var citasQuery = context.Citas.AsNoTracking()
+                .Where(c => c.Activo && c.FechaHoraInicio.Date == hoy);
+            if (sucursalId.HasValue)
+                citasQuery = citasQuery.Where(c => c.SucursalId == sucursalId.Value);
+
+            var citasHoy = await citasQuery
                 .GroupBy(c => c.Estado)
                 .Select(g => new { Estado = g.Key, Count = g.Count() })
                 .ToListAsync();
 
-            // Ocupación del taller (hoy, todas las sucursales)
-            var capacidadHoy = await context.CapacidadTaller.AsNoTracking()
-                .Where(c => c.Activo && c.Fecha.Date == hoy)
+            // Ocupación del taller (hoy)
+            var capacidadQuery = context.CapacidadTaller.AsNoTracking()
+                .Where(c => c.Activo && c.Fecha.Date == hoy);
+            if (sucursalId.HasValue)
+                capacidadQuery = capacidadQuery.Where(c => c.SucursalId == sucursalId.Value);
+
+            var capacidadHoy = await capacidadQuery
                 .GroupBy(c => 1)
                 .Select(g => new
                 {
@@ -64,8 +81,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Dashboard
                 .FirstOrDefaultAsync();
 
             // Vehículos por estado
-            var vehiculosRaw = await context.Vehiculos.AsNoTracking()
-                .Where(v => v.Activo)
+            var vehiculosRaw = await vehiculosBase
                 .GroupBy(v => v.Estado)
                 .Select(g => new
                 {
@@ -112,13 +128,17 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Dashboard
             return ApiResponse<DashboardResumenDTO>.ok(dto, "Resumen del dashboard obtenido.");
         }
 
-        public async Task<ApiResponse<DashboardTallerDTO>> GetTallerAsync(DateTime fechaInicio, DateTime fechaFin)
+        public async Task<ApiResponse<DashboardTallerDTO>> GetTallerAsync(DateTime fechaInicio, DateTime fechaFin, int? sucursalId = null)
         {
             // Órdenes por estado en el rango de fechas
-            var ordenesPorEstado = await context.OrdenesServicio.AsNoTracking()
+            var ordenesQuery = context.OrdenesServicio.AsNoTracking()
                 .Where(o => o.Activo
                     && o.FechaApertura.Date >= fechaInicio.Date
-                    && o.FechaApertura.Date <= fechaFin.Date)
+                    && o.FechaApertura.Date <= fechaFin.Date);
+            if (sucursalId.HasValue)
+                ordenesQuery = ordenesQuery.Where(o => o.SucursalId == sucursalId.Value);
+
+            var ordenesPorEstado = await ordenesQuery
                 .GroupBy(o => new { o.Estado.Nombre, o.Estado.Codigo, o.Estado.OrdenSecuencial })
                 .Select(g => new OrdenesPorEstadoDTO
                 {
@@ -131,11 +151,15 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Dashboard
                 .ToListAsync();
 
             // Productividad por técnico (asignaciones en el rango)
-            var productividad = await context.AsignacionesTecnico.AsNoTracking()
+            var asignacionesQuery = context.AsignacionesTecnico.AsNoTracking()
                 .Include(a => a.Tecnico)
                 .Where(a => a.Activo
                     && a.FechaAsignacion.Date >= fechaInicio.Date
-                    && a.FechaAsignacion.Date <= fechaFin.Date)
+                    && a.FechaAsignacion.Date <= fechaFin.Date);
+            if (sucursalId.HasValue)
+                asignacionesQuery = asignacionesQuery.Where(a => a.Tecnico.SucursalId == sucursalId.Value);
+
+            var productividad = await asignacionesQuery
                 .GroupBy(a => new { a.TecnicoId, a.Tecnico.Nombre, a.Tecnico.Apellidos })
                 .Select(g => new ProductividadTecnicoDTO
                 {
@@ -149,8 +173,12 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Dashboard
                 .ToListAsync();
 
             // Capacidad diaria (tendencia)
-            var capacidadDiaria = await context.CapacidadTaller.AsNoTracking()
-                .Where(c => c.Activo && c.Fecha.Date >= fechaInicio.Date && c.Fecha.Date <= fechaFin.Date)
+            var capacidadQuery = context.CapacidadTaller.AsNoTracking()
+                .Where(c => c.Activo && c.Fecha.Date >= fechaInicio.Date && c.Fecha.Date <= fechaFin.Date);
+            if (sucursalId.HasValue)
+                capacidadQuery = capacidadQuery.Where(c => c.SucursalId == sucursalId.Value);
+
+            var capacidadDiariaRaw = await capacidadQuery
                 .GroupBy(c => c.Fecha.Date)
                 .Select(g => new CapacidadDiariaDTO
                 {
@@ -162,9 +190,20 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Dashboard
                 .OrderBy(c => c.Fecha)
                 .ToListAsync();
 
+            // Calcular porcentajes en memoria (misma fórmula que CapacidadTaller domain)
+            var capacidadDiaria = capacidadDiariaRaw.Select(c =>
+            {
+                c.PorcentajeOcupacion = c.MinutosDisponibles > 0
+                    ? Math.Round((decimal)c.MinutosReservados / c.MinutosDisponibles * 100, 1)
+                    : 0;
+                c.PorcentajeEficiencia = c.MinutosReservados > 0
+                    ? Math.Round((decimal)c.MinutosUtilizados / c.MinutosReservados * 100, 1)
+                    : 0;
+                return c;
+            }).ToList();
+
             // Eficiencia global del taller en el rango
-            var totales = await context.CapacidadTaller.AsNoTracking()
-                .Where(c => c.Activo && c.Fecha.Date >= fechaInicio.Date && c.Fecha.Date <= fechaFin.Date)
+            var totales = await capacidadQuery
                 .GroupBy(c => 1)
                 .Select(g => new
                 {
@@ -186,13 +225,17 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Dashboard
             }, "Datos del taller obtenidos.");
         }
 
-        public async Task<ApiResponse<DashboardVentasDTO>> GetVentasAsync(DateTime fechaInicio, DateTime fechaFin)
+        public async Task<ApiResponse<DashboardVentasDTO>> GetVentasAsync(DateTime fechaInicio, DateTime fechaFin, int? sucursalId = null)
         {
-            var ventasPorMes = await context.Vehiculos.AsNoTracking()
+            var vehiculosQuery = context.Vehiculos.AsNoTracking()
                 .Where(v => v.Activo
                     && v.FechaVenta.HasValue
                     && v.FechaVenta.Value >= fechaInicio
-                    && v.FechaVenta.Value <= fechaFin)
+                    && v.FechaVenta.Value < fechaFin.AddDays(1));
+            if (sucursalId.HasValue)
+                vehiculosQuery = vehiculosQuery.Where(v => v.Ubicacion != null && v.Ubicacion.SucursalID == sucursalId.Value);
+
+            var ventasPorMes = await vehiculosQuery
                 .GroupBy(v => new { v.FechaVenta!.Value.Year, v.FechaVenta!.Value.Month })
                 .Select(g => new VentasMensualesDTO
                 {
@@ -216,14 +259,17 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Dashboard
             }, "Datos de ventas obtenidos.");
         }
 
-        public async Task<ApiResponse<DashboardInventarioDTO>> GetInventarioAsync()
+        public async Task<ApiResponse<DashboardInventarioDTO>> GetInventarioAsync(int? sucursalId = null)
         {
             var hoy = TimeHelper.Today;
 
+            var vehiculosBase = context.Vehiculos.AsNoTracking()
+                .Where(v => v.Activo);
+            if (sucursalId.HasValue)
+                vehiculosBase = vehiculosBase.Where(v => v.Ubicacion != null && v.Ubicacion.SucursalID == sucursalId.Value);
+
             // Pipeline: vehículos por estado
-            // Materializamos con enum raw y convertimos a string en memoria
-            var pipelineRaw = await context.Vehiculos.AsNoTracking()
-                .Where(v => v.Activo)
+            var pipelineRaw = await vehiculosBase
                 .GroupBy(v => v.Estado)
                 .Select(g => new
                 {
@@ -243,10 +289,8 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Dashboard
                 .ToList();
 
             // Envejecimiento: días promedio en cada estado (solo no vendidos/entregados)
-            // Materializamos primero para evitar problemas de traducción LINQ
-            var vehiculosActivos = await context.Vehiculos.AsNoTracking()
-                .Where(v => v.Activo
-                    && v.Estado != EstadoVehiculo.Vendido
+            var vehiculosActivos = await vehiculosBase
+                .Where(v => v.Estado != EstadoVehiculo.Vendido
                     && v.Estado != EstadoVehiculo.Entregado)
                 .Select(v => new { v.Estado, v.FechaRegistro })
                 .ToListAsync();
@@ -256,7 +300,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Dashboard
                 .Select(g => new EnvejecimientoDTO
                 {
                     Estado = g.Key.ToString(),
-                    DiasPromedio = Math.Round(g.Average(v => (hoy - v.FechaRegistro).TotalDays), 1),
+                    DiasPromedio = Math.Round(g.Average(v => (hoy - v.FechaRegistro.Date).TotalDays), 0),
                     Cantidad = g.Count()
                 })
                 .OrderBy(e => (int)Enum.Parse<EstadoVehiculo>(e.Estado))

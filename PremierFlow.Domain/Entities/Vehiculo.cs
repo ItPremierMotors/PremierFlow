@@ -238,17 +238,23 @@ namespace PremierFlow.Domain.Entities
         //}
 
         /// <summary>
-        /// Marca el vehículo como vendido.
+        /// Marca el vehículo como vendido. Limpia datos de reserva si venía de Reservado.
         /// </summary>
-        public void MarcarComoVendido(int clienteId, decimal precioVenta, string vendedorId)
+        public void MarcarComoVendido(DateTime fechaMaximaEntrega)
         {
-            if (!DisponibleParaVenta)
+            if (!DisponibleParaVenta && Estado != EstadoVehiculo.Reservado)
                 throw new InvalidOperationException("El vehículo no está disponible para venta");
 
-            ClienteId = clienteId;
-            PrecioVenta = precioVenta;
-            VendedorId = vendedorId;
+            // Limpiar reserva si venía de Reservado
+            if (Estado == EstadoVehiculo.Reservado)
+            {
+                ReservadoPorId = null;
+                FechaReserva = null;
+                FechaLimiteReserva = null;
+            }
+
             FechaVenta = TimeHelper.Now;
+            FechaMaximaEntrega = fechaMaximaEntrega;
             Estado = EstadoVehiculo.Vendido;
         }
 

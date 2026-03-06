@@ -106,13 +106,32 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             servicio.CalcularSubtotal();
 
             context.OsServicios.Add(servicio);
+
+            // 6. Actualizar capacidad del taller si la OS tiene cita vinculada
+            var osConCita = await context.OrdenesServicio
+                .Where(o => o.OsId == dto.OsId && o.CitaId.HasValue)
+                .Select(o => o.CitaId)
+                .FirstOrDefaultAsync();
+            var cita = osConCita.HasValue
+                ? await context.Citas.FirstOrDefaultAsync(c => c.CitaId == osConCita.Value && c.Activo && c.CapacidadId.HasValue)
+                : null;
+            if (cita != null)
+            {
+                var capacidad = await context.CapacidadTaller.FindAsync(cita.CapacidadId!.Value);
+                if (capacidad != null)
+                {
+                    var minutosAdicionales = tipoServicio.DuracionEstimadaMin * dto.Cantidad;
+                    capacidad.MinutosReservados += minutosAdicionales;
+                }
+            }
+
             await context.SaveChangesAsync();
 
-            // 6. Recalcular totales de la OS
+            // 7. Recalcular totales de la OS
             os.CalcularTotales();
             await context.SaveChangesAsync();
 
-            // 7. Cargar navegaciones para el DTO
+            // 8. Cargar navegaciones para el DTO
             servicio.OrdenServicio = os;
             servicio.TipoServicio = tipoServicio;
             servicio.Tecnico = tecnico;
@@ -191,6 +210,28 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             servicio.Activo = false;
             servicio.UsuarioModificaId = usuarioId;
             servicio.FechaModificacion = TimeHelper.Now;
+
+            // Liberar minutos de la capacidad del taller si la OS tiene cita vinculada
+            var osConCita2 = await context.OrdenesServicio
+                .Where(o => o.OsId == servicio.OsId && o.CitaId.HasValue)
+                .Select(o => o.CitaId)
+                .FirstOrDefaultAsync();
+            var cita = osConCita2.HasValue
+                ? await context.Citas.FirstOrDefaultAsync(c => c.CitaId == osConCita2.Value && c.Activo && c.CapacidadId.HasValue)
+                : null;
+            if (cita != null)
+            {
+                var capacidad = await context.CapacidadTaller.FindAsync(cita.CapacidadId!.Value);
+                if (capacidad != null)
+                {
+                    var tipoServicio = await context.TiposServicio.FindAsync(servicio.TipoServicioId);
+                    if (tipoServicio != null)
+                    {
+                        var minutosLiberar = tipoServicio.DuracionEstimadaMin * servicio.Cantidad;
+                        capacidad.LiberarMinutos(minutosLiberar);
+                    }
+                }
+            }
 
             // Recalcular totales de la OS
             servicio.OrdenServicio.CalcularTotales();

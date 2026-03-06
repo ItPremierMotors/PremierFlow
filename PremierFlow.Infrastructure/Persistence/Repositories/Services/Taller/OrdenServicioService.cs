@@ -381,8 +381,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 TipoIngreso = TipoIngreso.Cita,
                 EsGarantia = dto.EsGarantia,
                 ObservacionesApertura = dto.ObservacionesApertura,
-                AsesorId = dto.AsesorId,
-                CoordinadorId = dto.CoordinadorId,
+
                 SucursalId = cita.SucursalId,
                 Activo = true,
                 UsuarioCreaId = usuarioId,
@@ -490,8 +489,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 TipoIngreso = TipoIngreso.WalkIn,
                 EsGarantia = dto.EsGarantia,
                 ObservacionesApertura = dto.ObservacionesApertura,
-                AsesorId = dto.AsesorId,
-                CoordinadorId = dto.CoordinadorId,
+
                 SucursalId = dto.SucursalId,
                 Activo = true,
                 UsuarioCreaId = usuarioId,
@@ -536,8 +534,6 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             os.NivelCombustible = dto.NivelCombustible;
             os.EsGarantia = dto.EsGarantia;
             os.ObservacionesApertura = dto.ObservacionesApertura;
-            os.AsesorId = dto.AsesorId;
-            os.CoordinadorId = dto.CoordinadorId;
             os.UsuarioModificaId = usuarioId;
             os.FechaModificacion = TimeHelper.Now;
 
@@ -804,8 +800,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 EsGarantia = o.EsGarantia,
                 ObservacionesApertura = o.ObservacionesApertura,
                 ObservacionesCierre = o.ObservacionesCierre,
-                AsesorId = o.AsesorId,
-                CoordinadorId = o.CoordinadorId,
+
                 TotalManoObra = o.TotalManoObra,
                 TotalRepuestos = o.TotalRepuestos,
                 TotalGeneral = o.TotalGeneral,
@@ -843,8 +838,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 EsGarantia = o.EsGarantia,
                 ObservacionesApertura = o.ObservacionesApertura,
                 ObservacionesCierre = o.ObservacionesCierre,
-                AsesorId = o.AsesorId,
-                CoordinadorId = o.CoordinadorId,
+
                 TotalManoObra = o.TotalManoObra,
                 TotalRepuestos = o.TotalRepuestos,
                 TotalGeneral = o.TotalGeneral,

@@ -48,15 +48,6 @@ namespace PremierFlow.Domain.Entities
 
         public string? ObservacionesCierre { get; set; }
 
-        /// <summary>
-        /// FK a ApplicationUser - Asesor de servicio responsable.
-        /// </summary>
-        public string? AsesorId { get; set; }
-
-        /// <summary>
-        /// FK a ApplicationUser - Coordinador de taller.
-        /// </summary>
-        public string? CoordinadorId { get; set; }
         public decimal TotalManoObra { get; set; } = 0;
 
         public decimal TotalRepuestos { get; set; } = 0;

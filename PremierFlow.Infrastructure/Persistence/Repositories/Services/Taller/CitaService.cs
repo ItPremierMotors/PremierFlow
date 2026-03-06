@@ -615,14 +615,14 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 .OrderBy(b => b.HoraInicio)
                 .FirstOrDefaultAsync();
 
-            // 4. Liberar capacidad y bloque de HOY
+            // 4. Registrar tiempo trabajado en HOY (NO liberar MinutosReservados —
+            //    el tiempo reservado originalmente se mantiene para calcular eficiencia real)
             if (cita.CapacidadId.HasValue)
             {
                 var capacidadHoy = await context.CapacidadTaller.FindAsync(cita.CapacidadId.Value);
                 if (capacidadHoy != null)
                 {
                     capacidadHoy.RegistrarTiempoTrabajado(dto.MinutosTrabajadosHoy);
-                    capacidadHoy.LiberarMinutos(minutosRestantes);
                 }
             }
 

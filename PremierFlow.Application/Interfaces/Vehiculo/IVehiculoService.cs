@@ -26,5 +26,7 @@ namespace PremierFlow.Application.Interfaces.Vehiculo
         Task<ApiResponse<bool>> CambiarEstadoAsync(int vehiculoId, EstadoVehiculo nuevoEstado, string usuarioId, int? clienteId = null, string? vendedorId = null, int? ubicacionId = null);
         Task<ApiResponse<int>> CancelarReservasVencidasAsync(string usuarioId);
         Task<ApiResponse<ResultadoImportacionDTO>> CrearLoteAsync(List<CreateVehiculoDTO> vehiculos, string usuarioId);
+        Task<ApiResponse<ResultadoBulkDTO>> BulkCambiarEstadoAsync(BulkCambiarEstadoDTO dto, string usuarioId);
+        Task<ApiResponse<ResultadoBulkDTO>> BulkEditarAsync(BulkEditarDTO dto, string usuarioId);
     }
 }

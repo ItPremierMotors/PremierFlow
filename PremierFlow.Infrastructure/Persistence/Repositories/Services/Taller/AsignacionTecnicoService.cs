@@ -275,6 +275,30 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             asignacion.UsuarioModificaId = usuarioId;
             asignacion.FechaModificacion = TimeHelper.Now;
 
+            // Actualizar MinutosUtilizados en CapacidadTaller
+            if (asignacion.FechaInicio.HasValue && asignacion.FechaFin.HasValue)
+            {
+                var minutosWorked = (int)(asignacion.FechaFin.Value - asignacion.FechaInicio.Value).TotalMinutes;
+                if (minutosWorked > 0)
+                {
+                    var osSucursalId = await context.OrdenesServicio
+                        .Where(o => o.OsId == asignacion.OsId)
+                        .Select(o => o.SucursalId)
+                        .FirstOrDefaultAsync();
+
+                    if (osSucursalId != null)
+                    {
+                        var capacidad = await context.CapacidadTaller
+                            .FirstOrDefaultAsync(c => c.Activo
+                                && c.Fecha.Date == asignacion.FechaInicio.Value.Date
+                                && c.SucursalId == osSucursalId);
+
+                        if (capacidad != null)
+                            capacidad.RegistrarTiempoTrabajado(minutosWorked);
+                    }
+                }
+            }
+
             // Completar el servicio si está vinculado y en proceso
             bool osAutoCompletada = false;
             if (asignacion.OsServicio != null && asignacion.OsServicio.EstaEnProceso)

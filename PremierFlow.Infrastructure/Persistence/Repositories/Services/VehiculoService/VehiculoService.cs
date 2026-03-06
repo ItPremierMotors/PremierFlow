@@ -92,27 +92,20 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
             }
 
             // Saliendo de Reservado a Vendido: limpiar reserva (cliente se mantiene para venta)
-            if (vehiculo.Estado == EstadoVehiculo.Reservado && nuevoEstado == EstadoVehiculo.Vendido)
-            {
-                vehiculo.ReservadoPorId = null;
-                vehiculo.FechaReserva = null;
-                vehiculo.FechaLimiteReserva = null;
-            }
-
-            // Entrando a Vendido: auto-set FechaVenta y FechaMaximaEntrega
+            // Entrando a Vendido: usar método de dominio
             if (nuevoEstado == EstadoVehiculo.Vendido)
             {
-                vehiculo.FechaVenta = TimeHelper.Now;
-                vehiculo.FechaMaximaEntrega = AgregarDiasHabiles(TimeHelper.Now, 7);
+                vehiculo.MarcarComoVendido(AgregarDiasHabiles(TimeHelper.Now, 7));
             }
-
-            // Entrando a Entregado: auto-set FechaEntrega
-            if (nuevoEstado == EstadoVehiculo.Entregado)
+            // Entrando a Entregado: usar método de dominio
+            else if (nuevoEstado == EstadoVehiculo.Entregado)
             {
-                vehiculo.FechaEntrega = TimeHelper.Now;
+                vehiculo.MarcarComoEntregado();
             }
-
-            vehiculo.Estado = nuevoEstado;
+            else
+            {
+                vehiculo.Estado = nuevoEstado;
+            }
             vehiculo.UsuarioModificaId = usuarioId;
             vehiculo.FechaModificacion = TimeHelper.Now;
 
@@ -136,7 +129,13 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
                     return ApiResponse<VehiculoDTO>.fail(400, null, "La placa ya existe.");
                 }
             }
-            //2. validar si la marca, modelo, version existen
+            //2. validar numero de motor duplicado si aplica
+            if (!string.IsNullOrEmpty(dto.NumeroMotor))
+            {
+                if (await NumeroMotorExiste(dto.NumeroMotor))
+                    return ApiResponse<VehiculoDTO>.fail(400, null, "Ya existe un vehículo con ese número de motor.");
+            }
+            //3. validar si la marca, modelo, version existen
             var marcaExiste = await context.Marcas.AnyAsync(m => m.MarcaId == dto.MarcaId && m.Activo);
             if (!marcaExiste)
             {
@@ -486,6 +485,13 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
                     return ApiResponse<VehiculoDTO>.fail(400, null, "Ya existe un vehículo con esa placa.");
             }
 
+            // 3b. Validar Numero de Motor duplicado
+            if (!string.IsNullOrEmpty(dto.NumeroMotor))
+            {
+                if (await NumeroMotorExiste(dto.NumeroMotor, dto.VehiculoId))
+                    return ApiResponse<VehiculoDTO>.fail(400, null, "Ya existe un vehículo con ese número de motor.");
+            }
+
             // 4. Validar marca (solo si cambió)
             if (vehiculo.MarcaId != dto.MarcaId)
             {
@@ -612,6 +618,12 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
                 .ToListAsync())
                 .ToHashSet();
 
+            var existingMotores = (await context.Vehiculos
+                .Where(v => v.Activo && v.NumeroMotor != null)
+                .Select(v => v.NumeroMotor!.ToLower())
+                .ToListAsync())
+                .ToHashSet();
+
             var marcaIds = await context.Marcas.Where(m => m.Activo).Select(m => m.MarcaId).ToListAsync();
             var marcaSet = new HashSet<int>(marcaIds);
 
@@ -622,6 +634,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
             var versionSet = new HashSet<int>(versionIds);
 
             var vinsEnLote = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var motoresEnLote = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var vehiculosParaInsertar = new List<(Vehiculo vehiculo, int index)>();
 
             for (int i = 0; i < vehiculos.Count; i++)
@@ -643,6 +656,15 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
                 // Placa
                 if (!string.IsNullOrWhiteSpace(dto.Placa) && existingPlacas.Contains(dto.Placa.ToLower()))
                     errores.Add($"Placa '{dto.Placa}' ya existe");
+
+                // Numero de Motor
+                if (!string.IsNullOrWhiteSpace(dto.NumeroMotor))
+                {
+                    if (existingMotores.Contains(dto.NumeroMotor.ToLower()))
+                        errores.Add($"Número de motor '{dto.NumeroMotor}' ya existe en la base de datos");
+                    else if (motoresEnLote.Contains(dto.NumeroMotor))
+                        errores.Add("Número de motor duplicado en el lote");
+                }
 
                 // Marca
                 if (!marcaSet.Contains(dto.MarcaId))
@@ -705,6 +727,11 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
                 existingVins.Add(dto.Vin.ToLower());
                 if (!string.IsNullOrWhiteSpace(dto.Placa))
                     existingPlacas.Add(dto.Placa.ToLower());
+                if (!string.IsNullOrWhiteSpace(dto.NumeroMotor))
+                {
+                    motoresEnLote.Add(dto.NumeroMotor);
+                    existingMotores.Add(dto.NumeroMotor.ToLower());
+                }
 
                 fila.Exitoso = true;
                 resultado.Detalle.Add(fila);
@@ -730,6 +757,173 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
 
             var msg = $"Importación completada: {resultado.Exitosos} exitosos, {resultado.Fallidos} con errores de {resultado.TotalFilas} vehículos.";
             return ApiResponse<ResultadoImportacionDTO>.ok(resultado, msg);
+        }
+
+        public async Task<ApiResponse<ResultadoBulkDTO>> BulkCambiarEstadoAsync(BulkCambiarEstadoDTO dto, string usuarioId)
+        {
+            if (dto.VehiculoIds == null || dto.VehiculoIds.Count == 0)
+                return ApiResponse<ResultadoBulkDTO>.fail(400, null, "Debe seleccionar al menos un vehículo.");
+
+            var vehiculos = await context.Vehiculos
+                .Where(v => v.Activo && dto.VehiculoIds.Contains(v.VehiculoId))
+                .ToListAsync();
+
+            if (vehiculos.Count == 0)
+                return ApiResponse<ResultadoBulkDTO>.fail(404, null, "No se encontraron vehículos.");
+
+            // Validar misma Marca+Modelo+Version
+            var grupos = vehiculos.GroupBy(v => new { v.MarcaId, v.ModeloId, v.VersionId }).Count();
+            if (grupos > 1)
+                return ApiResponse<ResultadoBulkDTO>.fail(400, null, "Todos los vehículos seleccionados deben ser de la misma Marca, Modelo y Versión.");
+
+            // Validar misma ubicación actual para cambio de estado masivo
+            var ubicaciones = vehiculos.Select(v => v.UbicacionId).Distinct().ToList();
+            if (ubicaciones.Count > 1)
+                return ApiResponse<ResultadoBulkDTO>.fail(400, null, "Para cambiar estado en lote, todos los vehículos deben estar en la misma ubicación.");
+
+            var resultado = new ResultadoBulkDTO { Total = vehiculos.Count };
+
+            foreach (var vehiculo in vehiculos)
+            {
+                var fila = new FilaBulkResultDTO { VehiculoId = vehiculo.VehiculoId, Vin = vehiculo.Vin };
+
+                // Aplicar ubicación
+                if (dto.UbicacionId.HasValue)
+                    vehiculo.UbicacionId = dto.UbicacionId.Value;
+
+                // Validar transición
+                if (!EsTransicionValida(vehiculo.Estado, dto.NuevoEstado))
+                {
+                    fila.Error = $"No se puede cambiar de {vehiculo.Estado} a {dto.NuevoEstado}.";
+                    resultado.Detalle.Add(fila);
+                    resultado.Fallidos++;
+                    continue;
+                }
+
+                // Si va a Vendido, setear datos de venta antes de validación
+                if (dto.NuevoEstado == EstadoVehiculo.Vendido)
+                {
+                    if (dto.PrecioVenta.HasValue && dto.PrecioVenta > 0)
+                        vehiculo.PrecioVenta = dto.PrecioVenta;
+                    if (dto.ClienteId.HasValue)
+                        vehiculo.ClienteId = dto.ClienteId;
+                }
+
+                var validacion = ValidarDatosParaTransicion(vehiculo, dto.NuevoEstado);
+                if (validacion != null)
+                {
+                    fila.Error = validacion;
+                    resultado.Detalle.Add(fila);
+                    resultado.Fallidos++;
+                    continue;
+                }
+
+                // Lógica de reserva
+                if (dto.NuevoEstado == EstadoVehiculo.Reservado)
+                {
+                    vehiculo.ReservadoPorId = usuarioId;
+                    vehiculo.FechaReserva = TimeHelper.Now;
+                    vehiculo.FechaLimiteReserva = TimeHelper.Now.AddDays(10);
+                    if (!string.IsNullOrEmpty(dto.VendedorId))
+                        vehiculo.VendedorId = dto.VendedorId;
+                    if (dto.ClienteId.HasValue)
+                        vehiculo.ClienteId = dto.ClienteId;
+                }
+
+                // Cancelar reserva
+                if (vehiculo.Estado == EstadoVehiculo.Reservado && dto.NuevoEstado == EstadoVehiculo.EnExhibicion)
+                {
+                    vehiculo.ReservadoPorId = null;
+                    vehiculo.FechaReserva = null;
+                    vehiculo.FechaLimiteReserva = null;
+                    vehiculo.ClienteId = null;
+                    vehiculo.VendedorId = null;
+                }
+
+                // Vendido: usar método de dominio
+                if (dto.NuevoEstado == EstadoVehiculo.Vendido)
+                {
+                    vehiculo.MarcarComoVendido(AgregarDiasHabiles(TimeHelper.Now, 7));
+                }
+                // Entregado: usar método de dominio
+                else if (dto.NuevoEstado == EstadoVehiculo.Entregado)
+                {
+                    vehiculo.MarcarComoEntregado();
+                }
+                else
+                {
+                    vehiculo.Estado = dto.NuevoEstado;
+                }
+                vehiculo.UsuarioModificaId = usuarioId;
+                vehiculo.FechaModificacion = TimeHelper.Now;
+
+                fila.Exitoso = true;
+                resultado.Detalle.Add(fila);
+                resultado.Exitosos++;
+            }
+
+            if (resultado.Exitosos > 0)
+                await context.SaveChangesAsync();
+
+            var msg = $"Cambio de estado completado: {resultado.Exitosos} exitosos, {resultado.Fallidos} con errores.";
+            return ApiResponse<ResultadoBulkDTO>.ok(resultado, msg);
+        }
+
+        public async Task<ApiResponse<ResultadoBulkDTO>> BulkEditarAsync(BulkEditarDTO dto, string usuarioId)
+        {
+            if (dto.VehiculoIds == null || dto.VehiculoIds.Count == 0)
+                return ApiResponse<ResultadoBulkDTO>.fail(400, null, "Debe seleccionar al menos un vehículo.");
+
+            var vehiculos = await context.Vehiculos
+                .Where(v => v.Activo && dto.VehiculoIds.Contains(v.VehiculoId))
+                .ToListAsync();
+
+            if (vehiculos.Count == 0)
+                return ApiResponse<ResultadoBulkDTO>.fail(404, null, "No se encontraron vehículos.");
+
+            // Validar misma Marca+Modelo+Version
+            var grupos = vehiculos.GroupBy(v => new { v.MarcaId, v.ModeloId, v.VersionId }).Count();
+            if (grupos > 1)
+                return ApiResponse<ResultadoBulkDTO>.fail(400, null, "Todos los vehículos seleccionados deben ser de la misma Marca, Modelo y Versión.");
+
+            var resultado = new ResultadoBulkDTO { Total = vehiculos.Count };
+
+            foreach (var vehiculo in vehiculos)
+            {
+                var fila = new FilaBulkResultDTO { VehiculoId = vehiculo.VehiculoId, Vin = vehiculo.Vin };
+
+                // Importacion
+                if (dto.NumeroImportacion != null) vehiculo.NumeroImportacion = dto.NumeroImportacion;
+                if (dto.NumeroPoliza != null) vehiculo.NumeroPoliza = dto.NumeroPoliza;
+                if (dto.CostoImportacion.HasValue) vehiculo.CostoImportacion = dto.CostoImportacion;
+                if (dto.FechaIngresoPais.HasValue) vehiculo.FechaIngresoPais = dto.FechaIngresoPais;
+                if (dto.FechaRecepcion.HasValue) vehiculo.FechaRecepcion = dto.FechaRecepcion;
+
+                // Comercial
+                if (dto.PrecioLista.HasValue) vehiculo.PrecioLista = dto.PrecioLista;
+                if (dto.Color != null) vehiculo.Color = dto.Color;
+
+                // Taller
+                if (dto.KilometrajeActual.HasValue)
+                {
+                    if (dto.KilometrajeActual.Value >= vehiculo.KilometrajeActual)
+                        vehiculo.KilometrajeActual = dto.KilometrajeActual.Value;
+                }
+                if (dto.FechaPrimeraMatricula.HasValue) vehiculo.FechaPrimeraMatricula = dto.FechaPrimeraMatricula;
+                if (dto.GarantiaHasta.HasValue) vehiculo.GarantiaHasta = dto.GarantiaHasta;
+
+                vehiculo.UsuarioModificaId = usuarioId;
+                vehiculo.FechaModificacion = TimeHelper.Now;
+
+                fila.Exitoso = true;
+                resultado.Detalle.Add(fila);
+                resultado.Exitosos++;
+            }
+
+            await context.SaveChangesAsync();
+
+            var msg = $"Edición masiva completada: {resultado.Exitosos} vehículos actualizados.";
+            return ApiResponse<ResultadoBulkDTO>.ok(resultado, msg);
         }
 
         #region Helpers
@@ -771,6 +965,14 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoS
         {
             return await context.Vehiculos
                 .AnyAsync(v => v.Placa == placa &&
+                              (excludeId == null || v.VehiculoId != excludeId) &&
+                              v.Activo);
+        }
+
+        private async Task<bool> NumeroMotorExiste(string numeroMotor, int? excludeId = null)
+        {
+            return await context.Vehiculos
+                .AnyAsync(v => v.NumeroMotor == numeroMotor &&
                               (excludeId == null || v.VehiculoId != excludeId) &&
                               v.Activo);
         }

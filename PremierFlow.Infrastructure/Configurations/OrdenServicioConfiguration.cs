@@ -29,8 +29,6 @@ namespace PremierFlow.Infrastructure.Configurations
             builder.Property(e => e.EsGarantia).HasColumnName("es_garantia").HasDefaultValue(false);
             builder.Property(e => e.ObservacionesApertura).HasColumnName("observaciones_apertura").HasColumnType("nvarchar(2000)");
             builder.Property(e => e.ObservacionesCierre).HasColumnName("observaciones_cierre").HasColumnType("nvarchar(2000)");
-            builder.Property(e => e.AsesorId).HasColumnName("asesor_id").HasMaxLength(450);
-            builder.Property(e => e.CoordinadorId).HasColumnName("coordinador_id").HasMaxLength(450);
             builder.Property(e => e.TotalManoObra).HasColumnName("total_mano_obra").HasPrecision(10, 2).HasDefaultValue(0);
             builder.Property(e => e.TotalRepuestos).HasColumnName("total_repuestos").HasPrecision(10, 2).HasDefaultValue(0);
             builder.Property(e => e.TotalGeneral).HasColumnName("total_general").HasPrecision(10, 2).HasDefaultValue(0);

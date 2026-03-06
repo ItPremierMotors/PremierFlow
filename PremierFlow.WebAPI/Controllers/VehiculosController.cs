@@ -173,6 +173,31 @@ namespace PremierFlow.WebAPI.Controllers
             return StatusCode(result.StatusCode, result);
         }
 
+        [HttpPatch("BulkCambiarEstado")]
+        public async Task<IActionResult> BulkCambiarEstado([FromBody] BulkCambiarEstadoDTO dto)
+        {
+            var UserFromToken = User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(UserFromToken))
+                return Unauthorized(new { Messaje = "Usuario no autenticado. " });
+
+            if (dto.NuevoEstado == EstadoVehiculo.Reservado && !User.IsInRole("JefeVentas"))
+                return StatusCode(403, ApiResponse<bool>.fail(403, null, "Solo el rol 'Jefe Ventas' puede reservar vehículos."));
+
+            var result = await _vehiculoService.BulkCambiarEstadoAsync(dto, UserFromToken);
+            return StatusCode(result.StatusCode, result);
+        }
+
+        [HttpPatch("BulkEditar")]
+        public async Task<IActionResult> BulkEditar([FromBody] BulkEditarDTO dto)
+        {
+            var UserFromToken = User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(UserFromToken))
+                return Unauthorized(new { Messaje = "Usuario no autenticado. " });
+
+            var result = await _vehiculoService.BulkEditarAsync(dto, UserFromToken);
+            return StatusCode(result.StatusCode, result);
+        }
+
         [HttpPost("CancelarReservasVencidas")]
         public async Task<IActionResult> CancelarReservasVencidas()
         {
