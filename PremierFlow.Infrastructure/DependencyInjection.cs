@@ -42,7 +42,11 @@ namespace PremierFlow.Infrastructure
 
             //2. dbcontext con sql server
             services.AddDbContext<PremierFlowDbContext>(option =>
-                option.UseSqlServer(connectionString)
+                option.UseSqlServer(connectionString, sqlOptions =>
+                    sqlOptions.EnableRetryOnFailure(
+                        maxRetryCount: 5,
+                        maxRetryDelay: TimeSpan.FromSeconds(30),
+                        errorNumbersToAdd: null))
             );
 
             //3. identity (usuarios, roles) usando nuestro dbcontext
