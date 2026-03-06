@@ -25,6 +25,7 @@ PublishOutput/
 # =========================
 appsettings.Development.json
 appsettings.Local.json
+appsettings.Production.json 
 *.local.json
 .env
 secrets.json
