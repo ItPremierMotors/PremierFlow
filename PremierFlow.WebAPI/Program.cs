@@ -68,13 +68,13 @@ var app = builder.Build();
 
 
 ////ejecutar seed de infrastructura (roles, usuario admin, etc)
-//using(var scope = app.Services.CreateScope())
-//{
-//    var services = scope.ServiceProvider;
-//    await DependencyInjection.InitializeDatabaseAsync(services);
-//}
+using(var scope = app.Services.CreateScope())
+{
+   var services = scope.ServiceProvider;
+   await DependencyInjection.InitializeDatabaseAsync(services);
+}
 
-
+gir 
 
 
 // Configure the HTTP request pipeline.
