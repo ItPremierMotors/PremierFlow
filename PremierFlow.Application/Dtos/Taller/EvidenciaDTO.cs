@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Text.Json.Serialization;
 
 namespace PremierFlow.Application.Dtos.Taller
 {
@@ -10,6 +11,7 @@ namespace PremierFlow.Application.Dtos.Taller
         public int EvidenciaId { get; set; }
         public int OsId { get; set; }
         public int? RecepcionId { get; set; }
+        [JsonConverter(typeof(JsonStringEnumConverter))]
         public TipoEvidencia TipoEvidencia { get; set; }
         public string UrlArchivo { get; set; } = null!;
         public string? Descripcion { get; set; }
@@ -29,6 +31,7 @@ namespace PremierFlow.Application.Dtos.Taller
     {
         public int OsId { get; set; }
         public int? RecepcionId { get; set; }
+        [JsonConverter(typeof(JsonStringEnumConverter))]
         public TipoEvidencia TipoEvidencia { get; set; }
         public string UrlArchivo { get; set; } = null!;
         public string? Descripcion { get; set; }
@@ -37,6 +40,7 @@ namespace PremierFlow.Application.Dtos.Taller
     {
         public int OsId { get; set; }
         public int? RecepcionId { get; set; }
+        [JsonConverter(typeof(JsonStringEnumConverter))]
         public TipoEvidencia TipoEvidencia { get; set; }
         public string Base64Data { get; set; } = null!;
         public string NombreArchivo { get; set; } = null!;

@@ -105,31 +105,44 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
 
             servicio.CalcularSubtotal();
 
-            context.OsServicios.Add(servicio);
-
-            // 6. Actualizar capacidad del taller si la OS tiene cita vinculada
-            var osConCita = await context.OrdenesServicio
-                .Where(o => o.OsId == dto.OsId && o.CitaId.HasValue)
-                .Select(o => o.CitaId)
-                .FirstOrDefaultAsync();
-            var cita = osConCita.HasValue
-                ? await context.Citas.FirstOrDefaultAsync(c => c.CitaId == osConCita.Value && c.Activo && c.CapacidadId.HasValue)
-                : null;
-            if (cita != null)
+            var strategy = context.Database.CreateExecutionStrategy();
+            try
             {
-                var capacidad = await context.CapacidadTaller.FindAsync(cita.CapacidadId!.Value);
-                if (capacidad != null)
+                await strategy.ExecuteAsync(async () =>
                 {
-                    var minutosAdicionales = tipoServicio.DuracionEstimadaMin * dto.Cantidad;
-                    capacidad.MinutosReservados += minutosAdicionales;
-                }
+                    await using var transaction = await context.Database.BeginTransactionAsync();
+
+                    context.OsServicios.Add(servicio);
+
+                    // 6. Actualizar capacidad del taller si la OS tiene cita vinculada
+                    var osConCita = await context.OrdenesServicio
+                        .Where(o => o.OsId == dto.OsId && o.CitaId.HasValue)
+                        .Select(o => o.CitaId)
+                        .FirstOrDefaultAsync();
+                    var cita = osConCita.HasValue
+                        ? await context.Citas.FirstOrDefaultAsync(c => c.CitaId == osConCita.Value && c.Activo && c.CapacidadId.HasValue)
+                        : null;
+                    if (cita != null)
+                    {
+                        var capacidad = await context.CapacidadTaller.FindAsync(cita.CapacidadId!.Value);
+                        if (capacidad != null)
+                        {
+                            var minutosAdicionales = tipoServicio.DuracionEstimadaMin * dto.Cantidad;
+                            capacidad.MinutosReservados += minutosAdicionales;
+                        }
+                    }
+
+                    // 7. Recalcular totales de la OS
+                    os.CalcularTotales();
+
+                    await context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                });
             }
-
-            await context.SaveChangesAsync();
-
-            // 7. Recalcular totales de la OS
-            os.CalcularTotales();
-            await context.SaveChangesAsync();
+            catch (Exception ex)
+            {
+                return ApiResponse<OsServicioDTO>.fail(500, null, $"Error al agregar servicio: {ex.Message}");
+            }
 
             // 8. Cargar navegaciones para el DTO
             servicio.OrdenServicio = os;
@@ -206,37 +219,51 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             if (servicio.EstaEnProceso || servicio.EstaCompletado)
                 return ApiResponse<bool>.fail(400, null, "No se puede quitar un servicio en proceso o completado.");
 
-            // Soft delete
-            servicio.Activo = false;
-            servicio.UsuarioModificaId = usuarioId;
-            servicio.FechaModificacion = TimeHelper.Now;
-
-            // Liberar minutos de la capacidad del taller si la OS tiene cita vinculada
-            var osConCita2 = await context.OrdenesServicio
-                .Where(o => o.OsId == servicio.OsId && o.CitaId.HasValue)
-                .Select(o => o.CitaId)
-                .FirstOrDefaultAsync();
-            var cita = osConCita2.HasValue
-                ? await context.Citas.FirstOrDefaultAsync(c => c.CitaId == osConCita2.Value && c.Activo && c.CapacidadId.HasValue)
-                : null;
-            if (cita != null)
+            var strategy = context.Database.CreateExecutionStrategy();
+            try
             {
-                var capacidad = await context.CapacidadTaller.FindAsync(cita.CapacidadId!.Value);
-                if (capacidad != null)
+                await strategy.ExecuteAsync(async () =>
                 {
-                    var tipoServicio = await context.TiposServicio.FindAsync(servicio.TipoServicioId);
-                    if (tipoServicio != null)
+                    await using var transaction = await context.Database.BeginTransactionAsync();
+
+                    // Soft delete
+                    servicio.Activo = false;
+                    servicio.UsuarioModificaId = usuarioId;
+                    servicio.FechaModificacion = TimeHelper.Now;
+
+                    // Liberar minutos de la capacidad del taller si la OS tiene cita vinculada
+                    var osConCita2 = await context.OrdenesServicio
+                        .Where(o => o.OsId == servicio.OsId && o.CitaId.HasValue)
+                        .Select(o => o.CitaId)
+                        .FirstOrDefaultAsync();
+                    var cita = osConCita2.HasValue
+                        ? await context.Citas.FirstOrDefaultAsync(c => c.CitaId == osConCita2.Value && c.Activo && c.CapacidadId.HasValue)
+                        : null;
+                    if (cita != null)
                     {
-                        var minutosLiberar = tipoServicio.DuracionEstimadaMin * servicio.Cantidad;
-                        capacidad.LiberarMinutos(minutosLiberar);
+                        var capacidad = await context.CapacidadTaller.FindAsync(cita.CapacidadId!.Value);
+                        if (capacidad != null)
+                        {
+                            var tipoServicio = await context.TiposServicio.FindAsync(servicio.TipoServicioId);
+                            if (tipoServicio != null)
+                            {
+                                var minutosLiberar = tipoServicio.DuracionEstimadaMin * servicio.Cantidad;
+                                capacidad.LiberarMinutos(minutosLiberar);
+                            }
+                        }
                     }
-                }
+
+                    // Recalcular totales de la OS
+                    servicio.OrdenServicio.CalcularTotales();
+
+                    await context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                });
             }
-
-            // Recalcular totales de la OS
-            servicio.OrdenServicio.CalcularTotales();
-
-            await context.SaveChangesAsync();
+            catch (Exception ex)
+            {
+                return ApiResponse<bool>.fail(500, null, $"Error al quitar servicio: {ex.Message}");
+            }
 
             return ApiResponse<bool>.ok(true, "Servicio eliminado exitosamente.");
         }
@@ -285,34 +312,49 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             if (servicio.Estado != EstadoServicioOS.EnProceso)
                 return ApiResponse<bool>.fail(400, null, "Solo se puede completar un servicio en proceso.");
 
-            servicio.CompletarTrabajo();
-            servicio.UsuarioModificaId = usuarioId;
-            servicio.FechaModificacion = TimeHelper.Now;
-
-            // Verificar si TODOS los servicios activos de la OS están completados/cancelados
-            var todosServicios = await context.OsServicios
-                .Where(s => s.OsId == servicio.OsId && s.Activo)
-                .ToListAsync();
-
-            var todosFinalizados = todosServicios.All(s =>
-                s.OsServicioId == osServicioId // este que acabamos de completar
-                || s.Estado == EstadoServicioOS.Completado
-                || s.Estado == EstadoServicioOS.Cancelado);
-
-            if (todosFinalizados)
+            bool todosFinalizados = false;
+            var strategy = context.Database.CreateExecutionStrategy();
+            try
             {
-                var estadoCompletada = await context.EstadosOs
-                    .FirstOrDefaultAsync(e => e.Codigo == EstadoOs.Estados.Completada && e.Activo);
-
-                if (estadoCompletada != null)
+                await strategy.ExecuteAsync(async () =>
                 {
-                    servicio.OrdenServicio.EstadoId = estadoCompletada.EstadoId;
-                    servicio.OrdenServicio.UsuarioModificaId = usuarioId;
-                    servicio.OrdenServicio.FechaModificacion = TimeHelper.Now;
-                }
-            }
+                    await using var transaction = await context.Database.BeginTransactionAsync();
 
-            await context.SaveChangesAsync();
+                    servicio.CompletarTrabajo();
+                    servicio.UsuarioModificaId = usuarioId;
+                    servicio.FechaModificacion = TimeHelper.Now;
+
+                    // Verificar si TODOS los servicios activos de la OS están completados/cancelados
+                    var todosServicios = await context.OsServicios
+                        .Where(s => s.OsId == servicio.OsId && s.Activo)
+                        .ToListAsync();
+
+                    todosFinalizados = todosServicios.All(s =>
+                        s.OsServicioId == osServicioId
+                        || s.Estado == EstadoServicioOS.Completado
+                        || s.Estado == EstadoServicioOS.Cancelado);
+
+                    if (todosFinalizados)
+                    {
+                        var estadoCompletada = await context.EstadosOs
+                            .FirstOrDefaultAsync(e => e.Codigo == EstadoOs.Estados.Completada && e.Activo);
+
+                        if (estadoCompletada != null)
+                        {
+                            servicio.OrdenServicio.EstadoId = estadoCompletada.EstadoId;
+                            servicio.OrdenServicio.UsuarioModificaId = usuarioId;
+                            servicio.OrdenServicio.FechaModificacion = TimeHelper.Now;
+                        }
+                    }
+
+                    await context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                });
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse<bool>.fail(500, null, $"Error al completar trabajo: {ex.Message}");
+            }
 
             return ApiResponse<bool>.ok(true, todosFinalizados
                 ? "Trabajo completado. La orden de servicio se completó automáticamente."

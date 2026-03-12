@@ -565,26 +565,40 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 return ApiResponse<bool>.fail(400, null,
                     $"No se puede cambiar de {os.Estado.Nombre} a {nuevoEstado.Nombre}.");
 
-            os.EstadoId = dto.NuevoEstadoId;
-            os.UsuarioModificaId = usuarioId;
-            os.FechaModificacion = TimeHelper.Now;
-
-            if (!string.IsNullOrEmpty(dto.Observaciones))
+            var strategy = context.Database.CreateExecutionStrategy();
+            try
             {
-                os.ObservacionesApertura = string.IsNullOrEmpty(os.ObservacionesApertura)
-                    ? dto.Observaciones
-                    : $"{os.ObservacionesApertura}\n{dto.Observaciones}";
-            }
+                await strategy.ExecuteAsync(async () =>
+                {
+                    await using var transaction = await context.Database.BeginTransactionAsync();
 
-            // Si se está cerrando, sincronizar Cita
-            if (nuevoEstado.Codigo == EstadoOs.Estados.Cerrada)
+                    os.EstadoId = dto.NuevoEstadoId;
+                    os.UsuarioModificaId = usuarioId;
+                    os.FechaModificacion = TimeHelper.Now;
+
+                    if (!string.IsNullOrEmpty(dto.Observaciones))
+                    {
+                        os.ObservacionesApertura = string.IsNullOrEmpty(os.ObservacionesApertura)
+                            ? dto.Observaciones
+                            : $"{os.ObservacionesApertura}\n{dto.Observaciones}";
+                    }
+
+                    // Si se está cerrando, sincronizar Cita
+                    if (nuevoEstado.Codigo == EstadoOs.Estados.Cerrada)
+                    {
+                        os.Cerrar();
+                        if (os.Cita != null && os.Cita.Estado == EstadoCita.EnProceso)
+                            os.Cita.Completar();
+                    }
+
+                    await context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                });
+            }
+            catch (Exception ex)
             {
-                os.Cerrar();
-                if (os.Cita != null && os.Cita.Estado == EstadoCita.EnProceso)
-                    os.Cita.Completar();
+                return ApiResponse<bool>.fail(500, null, $"Error al cambiar estado: {ex.Message}");
             }
-
-            await context.SaveChangesAsync();
 
             return ApiResponse<bool>.ok(true, $"Estado cambiado a {nuevoEstado.Nombre}.");
         }
@@ -616,25 +630,39 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             if (estadoCerrada == null)
                 return ApiResponse<int?>.fail(500, null, "Estado CERRADA no configurado en el sistema.");
 
-            // Cerrar OS
-            os.Cerrar(dto.ObservacionesCierre);
-            os.EstadoId = estadoCerrada.EstadoId;
-            os.UsuarioModificaId = usuarioId;
-            os.FechaModificacion = TimeHelper.Now;
-
-            // Recalcular totales
-            os.CalcularTotales();
-
-            // Completar cita si existe
-            if (os.Cita != null && os.Cita.Estado == EstadoCita.EnProceso)
+            var strategy = context.Database.CreateExecutionStrategy();
+            try
             {
-                os.Cita.Completar();
+                await strategy.ExecuteAsync(async () =>
+                {
+                    await using var transaction = await context.Database.BeginTransactionAsync();
+
+                    // Cerrar OS
+                    os.Cerrar(dto.ObservacionesCierre);
+                    os.EstadoId = estadoCerrada.EstadoId;
+                    os.UsuarioModificaId = usuarioId;
+                    os.FechaModificacion = TimeHelper.Now;
+
+                    // Recalcular totales
+                    os.CalcularTotales();
+
+                    // Completar cita si existe
+                    if (os.Cita != null && os.Cita.Estado == EstadoCita.EnProceso)
+                    {
+                        os.Cita.Completar();
+                    }
+
+                    // Guardar próxima revisión en la OS
+                    os.ProximaRevision = dto.ProximaRevision;
+
+                    await context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                });
             }
-
-            // Guardar próxima revisión en la OS
-            os.ProximaRevision = dto.ProximaRevision;
-
-            await context.SaveChangesAsync();
+            catch (Exception ex)
+            {
+                return ApiResponse<int?>.fail(500, null, $"Error al cerrar la orden: {ex.Message}");
+            }
 
             // Retornar CitaId para que el frontend pueda redirigir a fotos de salida
             return ApiResponse<int?>.ok(os.CitaId, "Orden de servicio cerrada exitosamente.");

@@ -246,10 +246,15 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                     return ApiResponse<CitaDTO>.fail(400, null, "La fecha de la cita debe ser futura.");
             }
 
-            // 6. Calcular hora fin
+            // 6. Validar sucursal
+            var sucursalExiste = await context.Sucursales.AnyAsync(s => s.Id == dto.SucursalId && s.Activa);
+            if (!sucursalExiste)
+                return ApiResponse<CitaDTO>.fail(404, null, "Sucursal no encontrada.");
+
+            // 7. Calcular hora fin
             var fechaHoraFin = dto.FechaHoraInicio.AddMinutes(tipoServicio.DuracionEstimadaMin);
 
-            // 7. Validar capacidad del día (si existe)
+            // 8. Validar capacidad del día (si existe)
             var capacidad = await context.CapacidadTaller
                 .FirstOrDefaultAsync(c => c.Fecha.Date == dto.FechaHoraInicio.Date &&
                                          c.SucursalId == dto.SucursalId &&
@@ -318,20 +323,33 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 FechaCreacion = TimeHelper.Now
             };
 
-            context.Citas.Add(cita);
-
-            // 11. Reservar capacidad y bloque
-            if (capacidad != null)
+            var strategy = context.Database.CreateExecutionStrategy();
+            try
             {
-                capacidad.ReservarMinutos(tipoServicio.DuracionEstimadaMin);
-            }
+                await strategy.ExecuteAsync(async () =>
+                {
+                    await using var transaction = await context.Database.BeginTransactionAsync();
+                    context.Citas.Add(cita);
 
-            if (bloque != null)
+                    // 11. Reservar capacidad y bloque
+                    if (capacidad != null)
+                    {
+                        capacidad.ReservarMinutos(tipoServicio.DuracionEstimadaMin);
+                    }
+
+                    if (bloque != null)
+                    {
+                        bloque.AgendarVehiculo();
+                    }
+
+                    await context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                });
+            }
+            catch (Exception ex)
             {
-                bloque.AgendarVehiculo();
+                return ApiResponse<CitaDTO>.fail(500, null, $"Error al agendar la cita: {ex.Message}");
             }
-
-            await context.SaveChangesAsync();
 
             // 12. Cargar navegaciones para el DTO
             cita.Cliente = cliente;
@@ -377,7 +395,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             cita.FechaModificacion = TimeHelper.Now;
 
             await context.SaveChangesAsync();
-            return ApiResponse<CitaDTO>.ok(MapToDto(cita), "cita actualiada exictosamente");
+            return ApiResponse<CitaDTO>.ok(MapToDto(cita), "Cita actualizada exitosamente.");
         }
         public async Task<ApiResponse<bool>> ConfirmarAsync(int citaId, string usuarioId)
         {
@@ -410,27 +428,40 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             if (!cita.EstaActiva)
                 return ApiResponse<bool>.fail(400, null, "Solo se pueden cancelar citas activas.");
 
-            // Liberar capacidad usando FK directa
-            if (cita.CapacidadId.HasValue)
+            var strategy = context.Database.CreateExecutionStrategy();
+            try
             {
-                var capacidad = await context.CapacidadTaller.FindAsync(cita.CapacidadId.Value);
-                if (capacidad != null)
-                    capacidad.LiberarMinutos(cita.TipoServicio.DuracionEstimadaMin);
-            }
+                await strategy.ExecuteAsync(async () =>
+                {
+                    await using var transaction = await context.Database.BeginTransactionAsync();
+                    // Liberar capacidad usando FK directa
+                    if (cita.CapacidadId.HasValue)
+                    {
+                        var capacidad = await context.CapacidadTaller.FindAsync(cita.CapacidadId.Value);
+                        if (capacidad != null)
+                            capacidad.LiberarMinutos(cita.TipoServicio.DuracionEstimadaMin);
+                    }
 
-            // Liberar bloque usando FK directa
-            if (cita.BloqueHorarioId.HasValue)
+                    // Liberar bloque usando FK directa
+                    if (cita.BloqueHorarioId.HasValue)
+                    {
+                        var bloque = await context.BloquesHorario.FindAsync(cita.BloqueHorarioId.Value);
+                        if (bloque != null)
+                            bloque.LiberarEspacio();
+                    }
+
+                    cita.Cancelar(dto.MotivoCancelacion);
+                    cita.UsuarioModificaId = usuarioId;
+                    cita.FechaModificacion = TimeHelper.Now;
+
+                    await context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                });
+            }
+            catch (Exception ex)
             {
-                var bloque = await context.BloquesHorario.FindAsync(cita.BloqueHorarioId.Value);
-                if (bloque != null)
-                    bloque.LiberarEspacio();
+                return ApiResponse<bool>.fail(500, null, $"Error al cancelar la cita: {ex.Message}");
             }
-
-            cita.Cancelar(dto.MotivoCancelacion);
-            cita.UsuarioModificaId = usuarioId;
-            cita.FechaModificacion = TimeHelper.Now;
-
-            await context.SaveChangesAsync();
 
             return ApiResponse<bool>.ok(true, "Cita cancelada exitosamente.");
         }
@@ -450,30 +481,43 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             if (cita.FechaHoraInicio.Date != TimeHelper.Now.Date)
                 return ApiResponse<bool>.fail(400, null, "Solo se puede marcar no-show en la fecha programada de la cita.");
 
-            // Incrementar contador de no-show del cliente
-            cita.Cliente.IncrementarNoShow();
-
-            // Liberar capacidad usando FK directa
-            if (cita.CapacidadId.HasValue)
+            var strategy = context.Database.CreateExecutionStrategy();
+            try
             {
-                var capacidad = await context.CapacidadTaller.FindAsync(cita.CapacidadId.Value);
-                if (capacidad != null)
-                    capacidad.LiberarMinutos(cita.TipoServicio.DuracionEstimadaMin);
-            }
+                await strategy.ExecuteAsync(async () =>
+                {
+                    await using var transaction = await context.Database.BeginTransactionAsync();
+                    // Incrementar contador de no-show del cliente
+                    cita.Cliente.IncrementarNoShow();
 
-            // Liberar bloque usando FK directa
-            if (cita.BloqueHorarioId.HasValue)
+                    // Liberar capacidad usando FK directa
+                    if (cita.CapacidadId.HasValue)
+                    {
+                        var capacidad = await context.CapacidadTaller.FindAsync(cita.CapacidadId.Value);
+                        if (capacidad != null)
+                            capacidad.LiberarMinutos(cita.TipoServicio.DuracionEstimadaMin);
+                    }
+
+                    // Liberar bloque usando FK directa
+                    if (cita.BloqueHorarioId.HasValue)
+                    {
+                        var bloque = await context.BloquesHorario.FindAsync(cita.BloqueHorarioId.Value);
+                        if (bloque != null)
+                            bloque.LiberarEspacio();
+                    }
+
+                    cita.MarcarNoShow();
+                    cita.UsuarioModificaId = usuarioId;
+                    cita.FechaModificacion = TimeHelper.Now;
+
+                    await context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                });
+            }
+            catch (Exception ex)
             {
-                var bloque = await context.BloquesHorario.FindAsync(cita.BloqueHorarioId.Value);
-                if (bloque != null)
-                    bloque.LiberarEspacio();
+                return ApiResponse<bool>.fail(500, null, $"Error al registrar no-show: {ex.Message}");
             }
-
-            cita.MarcarNoShow();
-            cita.UsuarioModificaId = usuarioId;
-            cita.FechaModificacion = TimeHelper.Now;
-
-            await context.SaveChangesAsync();
 
             return ApiResponse<bool>.ok(true, $"No-show registrado. El cliente tiene {cita.Cliente.NoShowCount} inasistencias.");
         }
@@ -615,54 +659,63 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 .OrderBy(b => b.HoraInicio)
                 .FirstOrDefaultAsync();
 
-            // 4. Registrar tiempo trabajado en HOY (NO liberar MinutosReservados —
-            //    el tiempo reservado originalmente se mantiene para calcular eficiencia real)
-            if (cita.CapacidadId.HasValue)
+            var strategy = context.Database.CreateExecutionStrategy();
+            try
             {
-                var capacidadHoy = await context.CapacidadTaller.FindAsync(cita.CapacidadId.Value);
-                if (capacidadHoy != null)
+                await strategy.ExecuteAsync(async () =>
                 {
-                    capacidadHoy.RegistrarTiempoTrabajado(dto.MinutosTrabajadosHoy);
-                }
-            }
+                    await using var transaction = await context.Database.BeginTransactionAsync();
+                    // 4. Registrar tiempo trabajado en HOY
+                    if (cita.CapacidadId.HasValue)
+                    {
+                        var capacidadHoy = await context.CapacidadTaller.FindAsync(cita.CapacidadId.Value);
+                        if (capacidadHoy != null)
+                        {
+                            capacidadHoy.RegistrarTiempoTrabajado(dto.MinutosTrabajadosHoy);
+                        }
+                    }
 
-            if (cita.BloqueHorarioId.HasValue)
+                    if (cita.BloqueHorarioId.HasValue)
+                    {
+                        var bloqueHoy = await context.BloquesHorario.FindAsync(cita.BloqueHorarioId.Value);
+                        if (bloqueHoy != null)
+                            bloqueHoy.LiberarEspacio();
+                    }
+
+                    // 5. Actualizar la MISMA cita para mañana
+                    var horaInicio = new DateTime(manana.Year, manana.Month, manana.Day, 8, 0, 0);
+                    if (bloqueManana != null)
+                    {
+                        horaInicio = new DateTime(manana.Year, manana.Month, manana.Day,
+                            bloqueManana.HoraInicio.Hours, bloqueManana.HoraInicio.Minutes, 0);
+                    }
+
+                    cita.MinutosTrabajados = (cita.MinutosTrabajados ?? 0) + dto.MinutosTrabajadosHoy;
+                    cita.FechaHoraInicio = horaInicio;
+                    cita.FechaHoraFin = horaInicio.AddMinutes(minutosRestantes);
+                    cita.CapacidadId = capacidadManana.CapacidadId;
+                    cita.BloqueHorarioId = bloqueManana?.BloqueId;
+                    cita.Observaciones = (cita.Observaciones ?? "") +
+                        $"\n[Transferida {TimeHelper.Now:dd/MM}] {dto.MinutosTrabajadosHoy} min trabajados, {minutosRestantes} min pendientes.";
+                    cita.UsuarioModificaId = usuarioId;
+                    cita.FechaModificacion = TimeHelper.Now;
+
+                    // 6. Reservar capacidad y bloque de mañana
+                    capacidadManana.ReservarMinutos(minutosRestantes);
+
+                    if (bloqueManana != null)
+                    {
+                        bloqueManana.AgendarVehiculo();
+                    }
+
+                    await context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                });
+            }
+            catch (Exception ex)
             {
-                var bloqueHoy = await context.BloquesHorario.FindAsync(cita.BloqueHorarioId.Value);
-                if (bloqueHoy != null)
-                    bloqueHoy.LiberarEspacio();
+                return ApiResponse<CitaDTO>.fail(500, null, $"Error al transferir la cita: {ex.Message}");
             }
-
-            // 5. Actualizar la MISMA cita para mañana (no se crea fila nueva)
-            var horaInicio = new DateTime(manana.Year, manana.Month, manana.Day, 8, 0, 0);
-            if (bloqueManana != null)
-            {
-                horaInicio = new DateTime(manana.Year, manana.Month, manana.Day,
-                    bloqueManana.HoraInicio.Hours, bloqueManana.HoraInicio.Minutes, 0);
-            }
-
-            cita.MinutosTrabajados = (cita.MinutosTrabajados ?? 0) + dto.MinutosTrabajadosHoy;
-            cita.FechaHoraInicio = horaInicio;
-            cita.FechaHoraFin = horaInicio.AddMinutes(minutosRestantes);
-            cita.CapacidadId = capacidadManana.CapacidadId;
-            cita.BloqueHorarioId = bloqueManana?.BloqueId;
-            cita.Observaciones = (cita.Observaciones ?? "") +
-                $"\n[Transferida {TimeHelper.Now:dd/MM}] {dto.MinutosTrabajadosHoy} min trabajados, {minutosRestantes} min pendientes.";
-            cita.UsuarioModificaId = usuarioId;
-            cita.FechaModificacion = TimeHelper.Now;
-            // Estado sigue siendo EnProceso — no cambia
-
-            // 6. Reservar capacidad y bloque de mañana
-            capacidadManana.ReservarMinutos(minutosRestantes);
-
-            if (bloqueManana != null)
-            {
-                bloqueManana.AgendarVehiculo();
-            }
-
-            await context.SaveChangesAsync();
-
-            // La OS no se toca — sigue apuntando al mismo CitaId
 
             return ApiResponse<CitaDTO>.ok(MapToDto(cita),
                 $"Cita transferida a {manana:dd/MM/yyyy}. {dto.MinutosTrabajadosHoy} min registrados, {minutosRestantes} min pendientes.");

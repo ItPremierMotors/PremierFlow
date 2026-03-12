@@ -29,36 +29,6 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.AuthServi
             this.jwtTokenService = jwtTokenService;
         }
 
-        //public async Task<LoginResponse> LoginAsync(LoginRequest request)
-        //{
-        //    var user = await userManager.FindByEmailAsync(request.Email);
-        //    if (user == null || !user.Activo || user.Email == null)
-        //    {
-        //        throw new UnauthorizedAccessException("Invalid username or password");
-        //    }
-        //    var result = await signInManager.CheckPasswordSignInAsync(user, request.Password, lockoutOnFailure: true);
-
-        //    if(result.IsLockedOut)
-        //    {
-        //        throw new UnauthorizedAccessException("User account is locked out");
-        //    }
-
-        //    if (!result.Succeeded)
-        //    {
-        //        throw new UnauthorizedAccessException("Invalid username or password");
-        //    }
-        //    var token = await jwtTokenService.GenerateTokenAsync(user);
-        //    return new LoginResponse
-        //    {
-        //        Token = token,
-        //        User = new UserInfo
-        //        {
-        //            Id = user.Id,
-        //            UserName = user.UserName,
-        //            Email = user.Email
-        //        }
-        //    };
-        //}
         public async Task<ApiResponse<LoginResponse>> LoginAsync(LoginRequest request)
         {
             // Validar request
@@ -109,6 +79,10 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.AuthServi
                     new[] { "Credenciales inválidas" },
                     "Usuario o contraseña incorrectos");
             }
+
+            // Registrar último login
+            user.UltimoLogin = Domain.Common.TimeHelper.Now;
+            await userManager.UpdateAsync(user);
 
             // Generar token
             var token = await jwtTokenService.GenerateTokenAsync(user);

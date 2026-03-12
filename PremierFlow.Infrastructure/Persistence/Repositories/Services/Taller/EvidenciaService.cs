@@ -1,28 +1,25 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using PremierFlow.Application.Common;
 using PremierFlow.Application.Dtos.Taller;
+using PremierFlow.Application.Interfaces.BlobAzure;
 using PremierFlow.Application.Interfaces.Taller;
 using PremierFlow.Domain.Common;
 using PremierFlow.Domain.Entities;
 using PremierFlow.Domain.Enums;
-using System;
-using System.Collections.Generic;
-using System.Text;
+
 
 namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
 {
     public class EvidenciaService : IEvidenciaService
     {
         private readonly PremierFlowDbContext context;
-        private readonly string _basePath;
+        private readonly IBlobStoragesServices _blobStorageService;
+    
 
-        public EvidenciaService(PremierFlowDbContext context)
+        public EvidenciaService(PremierFlowDbContext context, IBlobStoragesServices blobStorageService)
         {
             this.context = context;
-            _basePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "evidencias");
-
-            if (!Directory.Exists(_basePath))
-                Directory.CreateDirectory(_basePath);
+            this._blobStorageService = blobStorageService;
         }
 
         /// <summary>
@@ -215,24 +212,26 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             var carpetaOs = os.NumeroOs; // Ej: OS-20260223-0001
             var nombreArchivo = $"{dto.TipoEvidencia}_{TimeHelper.Now:HHmmss}_{Guid.NewGuid().ToString("N")[..6]}{extension}";
 
-            // Crear directorios si no existen
-            var carpetaCompleta = Path.Combine(_basePath, carpetaOs, subcarpeta);
-            Directory.CreateDirectory(carpetaCompleta);
+            // 5. Subir archivo a Azure Blob Storage
+            var blobName = $"{carpetaOs}/{subcarpeta}/{nombreArchivo}";
+            var contentType = extension switch
+            {
+                ".jpg" or ".jpeg" => "image/jpeg",
+                ".png" => "image/png",
+                ".gif" => "image/gif",
+                ".webp" => "image/webp",
+                _ => "application/octet-stream"
+            };
 
-            var rutaCompleta = Path.Combine(carpetaCompleta, nombreArchivo);
-
-            // 5. Guardar archivo
+            string urlArchivo;
             try
             {
-                await File.WriteAllBytesAsync(rutaCompleta, fileBytes);
+                urlArchivo = await _blobStorageService.UploadAsync(fileBytes, blobName, contentType);
             }
             catch (Exception ex)
             {
                 return ApiResponse<EvidenciaDTO>.fail(500, null, $"Error al guardar el archivo: {ex.Message}");
             }
-
-            // 6. URL relativa (compatible con cualquier storage futuro)
-            var urlArchivo = $"/uploads/evidencias/{carpetaOs}/{subcarpeta}/{nombreArchivo}";
 
             // 7. Crear evidencia
             var evidencia = new Evidencia

@@ -152,15 +152,29 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 FechaCreacion = TimeHelper.Now
             };
 
-            context.AsignacionesTecnico.Add(asignacion);
-
-            // 6. Actualizar TecnicoAsignadoId en el servicio si aplica
-            if (osServicio != null)
+            var strategy = context.Database.CreateExecutionStrategy();
+            try
             {
-                osServicio.TecnicoAsignadoId = dto.TecnicoId;
-            }
+                await strategy.ExecuteAsync(async () =>
+                {
+                    await using var transaction = await context.Database.BeginTransactionAsync();
 
-            await context.SaveChangesAsync();
+                    context.AsignacionesTecnico.Add(asignacion);
+
+                    // 6. Actualizar TecnicoAsignadoId en el servicio si aplica
+                    if (osServicio != null)
+                    {
+                        osServicio.TecnicoAsignadoId = dto.TecnicoId;
+                    }
+
+                    await context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                });
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse<AsignacionTecnicoDTO>.fail(500, null, $"Error al asignar técnico: {ex.Message}");
+            }
 
             // 7. Cargar navegaciones para el DTO
             asignacion.OrdenServicio = os;
@@ -192,29 +206,43 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             if (asignacion.Estado != EstadoAsignacion.Asignado)
                 return ApiResponse<bool>.fail(400, null, "Solo se puede iniciar una asignación pendiente.");
 
-            asignacion.IniciarTrabajo();
-            asignacion.UsuarioModificaId = usuarioId;
-            asignacion.FechaModificacion = TimeHelper.Now;
-
-            // Iniciar el servicio si está vinculado y pendiente
-            if (asignacion.OsServicio != null && asignacion.OsServicio.Estado == EstadoServicioOS.Pendiente)
+            var strategy = context.Database.CreateExecutionStrategy();
+            try
             {
-                asignacion.OsServicio.IniciarTrabajo();
-            }
-
-            // Auto-transicionar la OS a EN_TRABAJO si está en APROBADA
-            if (estadoOs == EstadoOs.Estados.Aprobada)
-            {
-                var estadoEnTrabajo = await context.EstadosOs
-                    .FirstOrDefaultAsync(e => e.Codigo == EstadoOs.Estados.EnTrabajo && e.Activo);
-
-                if (estadoEnTrabajo != null)
+                await strategy.ExecuteAsync(async () =>
                 {
-                    asignacion.OrdenServicio.EstadoId = estadoEnTrabajo.EstadoId;
-                }
-            }
+                    await using var transaction = await context.Database.BeginTransactionAsync();
 
-            await context.SaveChangesAsync();
+                    asignacion.IniciarTrabajo();
+                    asignacion.UsuarioModificaId = usuarioId;
+                    asignacion.FechaModificacion = TimeHelper.Now;
+
+                    // Iniciar el servicio si está vinculado y pendiente
+                    if (asignacion.OsServicio != null && asignacion.OsServicio.Estado == EstadoServicioOS.Pendiente)
+                    {
+                        asignacion.OsServicio.IniciarTrabajo();
+                    }
+
+                    // Auto-transicionar la OS a EN_TRABAJO si está en APROBADA
+                    if (estadoOs == EstadoOs.Estados.Aprobada)
+                    {
+                        var estadoEnTrabajo = await context.EstadosOs
+                            .FirstOrDefaultAsync(e => e.Codigo == EstadoOs.Estados.EnTrabajo && e.Activo);
+
+                        if (estadoEnTrabajo != null)
+                        {
+                            asignacion.OrdenServicio.EstadoId = estadoEnTrabajo.EstadoId;
+                        }
+                    }
+
+                    await context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                });
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse<bool>.fail(500, null, $"Error al iniciar trabajo: {ex.Message}");
+            }
 
             return ApiResponse<bool>.ok(true, "Trabajo iniciado exitosamente.");
         }
@@ -271,70 +299,84 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             if (asignacion.Estado != EstadoAsignacion.EnProceso)
                 return ApiResponse<bool>.fail(400, null, "Solo se puede completar un trabajo en proceso.");
 
-            asignacion.Completar();
-            asignacion.UsuarioModificaId = usuarioId;
-            asignacion.FechaModificacion = TimeHelper.Now;
-
-            // Actualizar MinutosUtilizados en CapacidadTaller
-            if (asignacion.FechaInicio.HasValue && asignacion.FechaFin.HasValue)
-            {
-                var minutosWorked = (int)(asignacion.FechaFin.Value - asignacion.FechaInicio.Value).TotalMinutes;
-                if (minutosWorked > 0)
-                {
-                    var osSucursalId = await context.OrdenesServicio
-                        .Where(o => o.OsId == asignacion.OsId)
-                        .Select(o => o.SucursalId)
-                        .FirstOrDefaultAsync();
-
-                    if (osSucursalId != null)
-                    {
-                        var capacidad = await context.CapacidadTaller
-                            .FirstOrDefaultAsync(c => c.Activo
-                                && c.Fecha.Date == asignacion.FechaInicio.Value.Date
-                                && c.SucursalId == osSucursalId);
-
-                        if (capacidad != null)
-                            capacidad.RegistrarTiempoTrabajado(minutosWorked);
-                    }
-                }
-            }
-
-            // Completar el servicio si está vinculado y en proceso
             bool osAutoCompletada = false;
-            if (asignacion.OsServicio != null && asignacion.OsServicio.EstaEnProceso)
+            var strategy = context.Database.CreateExecutionStrategy();
+            try
             {
-                asignacion.OsServicio.CompletarTrabajo();
-
-                // Verificar si TODOS los servicios activos de la OS están completados/cancelados
-                var todosServicios = await context.OsServicios
-                    .Where(s => s.OsId == asignacion.OsServicio.OsId && s.Activo)
-                    .ToListAsync();
-
-                var todosFinalizados = todosServicios.All(s =>
-                    s.OsServicioId == asignacion.OsServicioId
-                    || s.Estado == EstadoServicioOS.Completado
-                    || s.Estado == EstadoServicioOS.Cancelado);
-
-                if (todosFinalizados)
+                await strategy.ExecuteAsync(async () =>
                 {
-                    var estadoCompletada = await context.EstadosOs
-                        .FirstOrDefaultAsync(e => e.Codigo == EstadoOs.Estados.Completada && e.Activo);
+                    await using var transaction = await context.Database.BeginTransactionAsync();
 
-                    if (estadoCompletada != null)
+                    asignacion.Completar();
+                    asignacion.UsuarioModificaId = usuarioId;
+                    asignacion.FechaModificacion = TimeHelper.Now;
+
+                    // Actualizar MinutosUtilizados en CapacidadTaller
+                    if (asignacion.FechaInicio.HasValue && asignacion.FechaFin.HasValue)
                     {
-                        var os = await context.OrdenesServicio.FindAsync(asignacion.OsServicio.OsId);
-                        if (os != null)
+                        var minutosWorked = (int)(asignacion.FechaFin.Value - asignacion.FechaInicio.Value).TotalMinutes;
+                        if (minutosWorked > 0)
                         {
-                            os.EstadoId = estadoCompletada.EstadoId;
-                            os.UsuarioModificaId = usuarioId;
-                            os.FechaModificacion = TimeHelper.Now;
-                            osAutoCompletada = true;
+                            var osSucursalId = await context.OrdenesServicio
+                                .Where(o => o.OsId == asignacion.OsId)
+                                .Select(o => o.SucursalId)
+                                .FirstOrDefaultAsync();
+
+                            if (osSucursalId != null)
+                            {
+                                var capacidad = await context.CapacidadTaller
+                                    .FirstOrDefaultAsync(c => c.Activo
+                                        && c.Fecha.Date == asignacion.FechaInicio.Value.Date
+                                        && c.SucursalId == osSucursalId);
+
+                                if (capacidad != null)
+                                    capacidad.RegistrarTiempoTrabajado(minutosWorked);
+                            }
                         }
                     }
-                }
-            }
 
-            await context.SaveChangesAsync();
+                    // Completar el servicio si está vinculado y en proceso
+                    if (asignacion.OsServicio != null && asignacion.OsServicio.EstaEnProceso)
+                    {
+                        asignacion.OsServicio.CompletarTrabajo();
+
+                        // Verificar si TODOS los servicios activos de la OS están completados/cancelados
+                        var todosServicios = await context.OsServicios
+                            .Where(s => s.OsId == asignacion.OsServicio.OsId && s.Activo)
+                            .ToListAsync();
+
+                        var todosFinalizados = todosServicios.All(s =>
+                            s.OsServicioId == asignacion.OsServicioId
+                            || s.Estado == EstadoServicioOS.Completado
+                            || s.Estado == EstadoServicioOS.Cancelado);
+
+                        if (todosFinalizados)
+                        {
+                            var estadoCompletada = await context.EstadosOs
+                                .FirstOrDefaultAsync(e => e.Codigo == EstadoOs.Estados.Completada && e.Activo);
+
+                            if (estadoCompletada != null)
+                            {
+                                var os = await context.OrdenesServicio.FindAsync(asignacion.OsServicio.OsId);
+                                if (os != null)
+                                {
+                                    os.EstadoId = estadoCompletada.EstadoId;
+                                    os.UsuarioModificaId = usuarioId;
+                                    os.FechaModificacion = TimeHelper.Now;
+                                    osAutoCompletada = true;
+                                }
+                            }
+                        }
+                    }
+
+                    await context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                });
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse<bool>.fail(500, null, $"Error al completar trabajo: {ex.Message}");
+            }
 
             return ApiResponse<bool>.ok(true, osAutoCompletada
                 ? "Trabajo completado. La orden de servicio se completó automáticamente."
@@ -365,29 +407,43 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             if (nuevoTecnico.TecnicoId == asignacion.TecnicoId)
                 return ApiResponse<AsignacionTecnicoDTO>.fail(400, null, "El nuevo técnico es el mismo que el actual.");
 
-            // Actualizar asignación
-            var observacionReasignacion = $"Reasignado de {asignacion.Tecnico.Nombre} {asignacion.Tecnico.Apellidos} a {nuevoTecnico.Nombre} {nuevoTecnico.Apellidos}";
-
-            asignacion.TecnicoId = dto.NuevoTecnicoId;
-            asignacion.Observaciones = string.IsNullOrEmpty(asignacion.Observaciones)
-                ? observacionReasignacion
-                : $"{asignacion.Observaciones}\n{observacionReasignacion}";
-
-            if (!string.IsNullOrEmpty(dto.Observaciones))
+            var strategy = context.Database.CreateExecutionStrategy();
+            try
             {
-                asignacion.Observaciones += $"\nMotivo: {dto.Observaciones}";
+                await strategy.ExecuteAsync(async () =>
+                {
+                    await using var transaction = await context.Database.BeginTransactionAsync();
+
+                    // Actualizar asignación
+                    var observacionReasignacion = $"Reasignado de {asignacion.Tecnico.Nombre} {asignacion.Tecnico.Apellidos} a {nuevoTecnico.Nombre} {nuevoTecnico.Apellidos}";
+
+                    asignacion.TecnicoId = dto.NuevoTecnicoId;
+                    asignacion.Observaciones = string.IsNullOrEmpty(asignacion.Observaciones)
+                        ? observacionReasignacion
+                        : $"{asignacion.Observaciones}\n{observacionReasignacion}";
+
+                    if (!string.IsNullOrEmpty(dto.Observaciones))
+                    {
+                        asignacion.Observaciones += $"\nMotivo: {dto.Observaciones}";
+                    }
+
+                    asignacion.UsuarioModificaId = usuarioId;
+                    asignacion.FechaModificacion = TimeHelper.Now;
+
+                    // Actualizar TecnicoAsignadoId en el servicio si aplica
+                    if (asignacion.OsServicio != null)
+                    {
+                        asignacion.OsServicio.TecnicoAsignadoId = dto.NuevoTecnicoId;
+                    }
+
+                    await context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                });
             }
-
-            asignacion.UsuarioModificaId = usuarioId;
-            asignacion.FechaModificacion = TimeHelper.Now;
-
-            // Actualizar TecnicoAsignadoId en el servicio si aplica
-            if (asignacion.OsServicio != null)
+            catch (Exception ex)
             {
-                asignacion.OsServicio.TecnicoAsignadoId = dto.NuevoTecnicoId;
+                return ApiResponse<AsignacionTecnicoDTO>.fail(500, null, $"Error al reasignar técnico: {ex.Message}");
             }
-
-            await context.SaveChangesAsync();
 
             // Actualizar referencia para el DTO
             asignacion.Tecnico = nuevoTecnico;

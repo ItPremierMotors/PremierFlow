@@ -124,7 +124,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Cliente
                 .AsNoTracking()
                 .FirstOrDefaultAsync(c=>c.ClienteId==clienteId && c.Activo);
             if (cliente == null)
-                return ApiResponse<ClienteDTO>.fail(400, null, "Cliente no encontrado");
+                return ApiResponse<ClienteDTO>.fail(404, null, "Cliente no encontrado");
             return ApiResponse<ClienteDTO>.ok(MapToDto(cliente), "cliente Obtenido"); 
         }
 

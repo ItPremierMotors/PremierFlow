@@ -6,6 +6,7 @@ using PremierFlow.Infrastructure;
 using PremierFlow.Infrastructure.Security;
 using Scalar.AspNetCore;
 using System.Text;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 

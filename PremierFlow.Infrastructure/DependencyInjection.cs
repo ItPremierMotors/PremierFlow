@@ -24,6 +24,7 @@ using PremierFlow.Infrastructure.Persistence.Repositories.Services.VehiculoServi
 using PremierFlow.Application.Interfaces.Dashboard;
 using PremierFlow.Infrastructure.Persistence.Repositories.Services.Dashboard;
 using PremierFlow.Infrastructure.Security;
+using PremierFlow.Application.Interfaces.BlobAzure;
 
 namespace PremierFlow.Infrastructure
 {
@@ -69,7 +70,7 @@ namespace PremierFlow.Infrastructure
             .AddDefaultTokenProviders();
 
             //4. otros servicios de infraestructura (ejemplo: servicios de seguridad, email, etc.)
-
+            services.AddSingleton<IBlobStoragesServices, AzureBlobStorageService>();
             // ============================================
             // 5. SERVICIOS DE NEGOCIO - PremierFlow DMS
             // ============================================

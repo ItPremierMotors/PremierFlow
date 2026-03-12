@@ -73,7 +73,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
                 .Include(r => r.Evidencias.Where(e => e.Activo))
                 .AsNoTracking()
                 .Where(r => r.Activo &&
-                           (r.FirmaClienteBase64 == null || r.FirmaClienteBase64 == ""));
+                           string.IsNullOrWhiteSpace(r.FirmaClienteBase64));
 
             if (sucursalId.HasValue)
                 query = query.Where(r => r.OrdenServicio.SucursalId == sucursalId);
@@ -286,7 +286,11 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             if (existeOs)
                 return ApiResponse<RecepcionDTO>.fail(400, null, "Ya existe una orden de servicio para esta cita.");
 
-            // 3. Validar kilometraje
+            // 3. Validar nivel de combustible
+            if (dto.NivelCombustiblePorcentaje < 0 || dto.NivelCombustiblePorcentaje > 100)
+                return ApiResponse<RecepcionDTO>.fail(400, null, "El nivel de combustible debe estar entre 0 y 100.");
+
+            // 4. Validar kilometraje
             if (dto.Kilometraje < cita.Vehiculo.KilometrajeActual)
                 return ApiResponse<RecepcionDTO>.fail(400, null,
                     $"El kilometraje debe ser mayor o igual al actual ({cita.Vehiculo.KilometrajeActual} km).");
@@ -301,100 +305,115 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             // 5. Generar número de OS
             var numeroOs = await GenerarNumeroOsAsync();
 
-            // 6. Crear OrdenServicio
-            var os = new OrdenServicio
+            var strategy = context.Database.CreateExecutionStrategy();
+            Recepcion recepcion = null!;
+            OrdenServicio os = null!;
+            try
             {
-                NumeroOs = numeroOs,
-                CitaId = dto.CitaId,
-                VehiculoId = cita.VehiculoId,
-                ClienteId = cita.ClienteId,
-                FechaApertura = TimeHelper.Now,
-                EstadoId = estadoAbierta.EstadoId,
-                KilometrajeIngreso = dto.Kilometraje,
-                NivelCombustible = dto.NivelCombustiblePorcentaje / 100m,
-                TipoIngreso = TipoIngreso.Cita,
-                EsGarantia = false,
-                ObservacionesApertura = dto.ObservacionesApertura,
-                SucursalId = cita.SucursalId,
-                Activo = true,
-                UsuarioCreaId = usuarioId,
-                FechaCreacion = TimeHelper.Now
-            };
-            context.OrdenesServicio.Add(os);
+                await strategy.ExecuteAsync(async () =>
+                {
+                    await using var transaction = await context.Database.BeginTransactionAsync();
 
-            // 6b. Agregar servicio de la cita automaticamente
-            var servicioCita = new OsServicio
+                    // 6. Crear OrdenServicio
+                    os = new OrdenServicio
+                    {
+                        NumeroOs = numeroOs,
+                        CitaId = dto.CitaId,
+                        VehiculoId = cita.VehiculoId,
+                        ClienteId = cita.ClienteId,
+                        FechaApertura = TimeHelper.Now,
+                        EstadoId = estadoAbierta.EstadoId,
+                        KilometrajeIngreso = dto.Kilometraje,
+                        NivelCombustible = dto.NivelCombustiblePorcentaje / 100m,
+                        TipoIngreso = TipoIngreso.Cita,
+                        EsGarantia = false,
+                        ObservacionesApertura = dto.ObservacionesApertura,
+                        SucursalId = cita.SucursalId,
+                        Activo = true,
+                        UsuarioCreaId = usuarioId,
+                        FechaCreacion = TimeHelper.Now
+                    };
+                    context.OrdenesServicio.Add(os);
+
+                    // 6b. Agregar servicio de la cita automaticamente
+                    var servicioCita = new OsServicio
+                    {
+                        TipoServicioId = cita.TipoServicioId,
+                        DescripcionTrabajo = cita.TipoServicio.Nombre,
+                        Estado = EstadoServicioOS.Pendiente,
+                        PrecioUnitario = cita.TipoServicio.PrecioBase,
+                        Cantidad = 1,
+                        Observaciones = cita.MotivoVisita,
+                        Activo = true,
+                        UsuarioCreaId = usuarioId,
+                        FechaCreacion = TimeHelper.Now
+                    };
+                    servicioCita.CalcularSubtotal();
+                    os.Servicios.Add(servicioCita);
+
+                    // 7. Crear Recepción con todos los campos del wizard
+                    recepcion = new Recepcion
+                    {
+                        OrdenServicio = os,
+                        FechaHoraRecepcion = TimeHelper.Now,
+                        RecibidoPorId = usuarioId,
+                        EntregadoPor = dto.EntregadoPor,
+                        EsPropietarioQuienEntrega = dto.EsPropietarioQuienEntrega,
+                        RelacionEntregante = dto.RelacionEntregante,
+                        TelefonoEntregante = dto.TelefonoEntregante,
+                        DanosExteriorJson = dto.DanosExteriorJson,
+                        LlantaRepuesto = dto.LlantaRepuesto,
+                        Gato = dto.Gato,
+                        Triangulos = dto.Triangulos,
+                        Extintor = dto.Extintor,
+                        Herramientas = dto.Herramientas,
+                        Radio = dto.Radio,
+                        Tapetes = dto.Tapetes,
+                        Antena = dto.Antena,
+                        EspejoIzquierdo = dto.EspejoIzquierdo,
+                        EspejoDerecho = dto.EspejoDerecho,
+                        Limpiaparabrisas = dto.Limpiaparabrisas,
+                        PlacaDelantera = dto.PlacaDelantera,
+                        PlacaTrasera = dto.PlacaTrasera,
+                        TapaCombustible = dto.TapaCombustible,
+                        ManualVehiculo = dto.ManualVehiculo,
+                        SegundaLlave = dto.SegundaLlave,
+                        InspeccionRuedasJson = dto.InspeccionRuedasJson,
+                        NivelAceiteOk = dto.NivelAceiteOk,
+                        NivelRefrigeranteOk = dto.NivelRefrigeranteOk,
+                        NivelLiquidoFrenosOk = dto.NivelLiquidoFrenosOk,
+                        BateriaOk = dto.BateriaOk,
+                        ObservacionesGenerales = dto.ObservacionesGenerales,
+                        FirmaClienteBase64 = dto.FirmaClienteBase64,
+                        ChecklistCompletado = true,
+                        Activo = true,
+                        UsuarioCreaId = usuarioId,
+                        FechaCreacion = TimeHelper.Now
+                    };
+                    context.Recepciones.Add(recepcion);
+
+                    // 8. Actualizar vehículo y cita
+                    cita.Vehiculo.ActualizarKilometraje(dto.Kilometraje);
+                    cita.IniciarProceso();
+                    cita.UsuarioModificaId = usuarioId;
+                    cita.FechaModificacion = TimeHelper.Now;
+
+                    await context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                });
+
+                // 9. Cargar navegaciones para DTO
+                recepcion.OrdenServicio = os;
+                os.Vehiculo = cita.Vehiculo;
+                os.Cliente = cita.Cliente;
+                os.Estado = estadoAbierta;
+
+                return ApiResponse<RecepcionDTO>.ok(MapToDto(recepcion), "Recepción y Orden de Servicio creadas exitosamente.");
+            }
+            catch (Exception ex)
             {
-                TipoServicioId = cita.TipoServicioId,
-                DescripcionTrabajo = cita.TipoServicio.Nombre,
-                Estado = EstadoServicioOS.Pendiente,
-                PrecioUnitario = cita.TipoServicio.PrecioBase,
-                Cantidad = 1,
-                Observaciones = cita.MotivoVisita,
-                Activo = true,
-                UsuarioCreaId = usuarioId,
-                FechaCreacion = TimeHelper.Now
-            };
-            servicioCita.CalcularSubtotal();
-            os.Servicios.Add(servicioCita);
-
-            // 7. Crear Recepción con todos los campos del wizard
-            var recepcion = new Recepcion
-            {
-                OrdenServicio = os,
-                FechaHoraRecepcion = TimeHelper.Now,
-                RecibidoPorId = usuarioId,
-                EntregadoPor = dto.EntregadoPor,
-                EsPropietarioQuienEntrega = dto.EsPropietarioQuienEntrega,
-                RelacionEntregante = dto.RelacionEntregante,
-                TelefonoEntregante = dto.TelefonoEntregante,
-                DanosExteriorJson = dto.DanosExteriorJson,
-                LlantaRepuesto = dto.LlantaRepuesto,
-                Gato = dto.Gato,
-                Triangulos = dto.Triangulos,
-                Extintor = dto.Extintor,
-                Herramientas = dto.Herramientas,
-                Radio = dto.Radio,
-                Tapetes = dto.Tapetes,
-                Antena = dto.Antena,
-                EspejoIzquierdo = dto.EspejoIzquierdo,
-                EspejoDerecho = dto.EspejoDerecho,
-                Limpiaparabrisas = dto.Limpiaparabrisas,
-                PlacaDelantera = dto.PlacaDelantera,
-                PlacaTrasera = dto.PlacaTrasera,
-                TapaCombustible = dto.TapaCombustible,
-                ManualVehiculo = dto.ManualVehiculo,
-                SegundaLlave = dto.SegundaLlave,
-                InspeccionRuedasJson = dto.InspeccionRuedasJson,
-                NivelAceiteOk = dto.NivelAceiteOk,
-                NivelRefrigeranteOk = dto.NivelRefrigeranteOk,
-                NivelLiquidoFrenosOk = dto.NivelLiquidoFrenosOk,
-                BateriaOk = dto.BateriaOk,
-                ObservacionesGenerales = dto.ObservacionesGenerales,
-                FirmaClienteBase64 = dto.FirmaClienteBase64,
-                ChecklistCompletado = true,
-                Activo = true,
-                UsuarioCreaId = usuarioId,
-                FechaCreacion = TimeHelper.Now
-            };
-            context.Recepciones.Add(recepcion);
-
-            // 8. Actualizar vehículo y cita
-            cita.Vehiculo.ActualizarKilometraje(dto.Kilometraje);
-            cita.IniciarProceso();
-            cita.UsuarioModificaId = usuarioId;
-            cita.FechaModificacion = TimeHelper.Now;
-
-            // 9. SaveChanges (todo en una transacción)
-            await context.SaveChangesAsync();
-
-            // 10. Cargar navegaciones para DTO
-            recepcion.OrdenServicio = os;
-            os.Vehiculo = cita.Vehiculo;
-            os.Cliente = cita.Cliente;
-            os.Estado = estadoAbierta;
-
-            return ApiResponse<RecepcionDTO>.ok(MapToDto(recepcion), "Recepción y Orden de Servicio creadas exitosamente.");
+                return ApiResponse<RecepcionDTO>.fail(500, null, $"Error al iniciar recepción: {ex.Message}");
+            }
         }
 
         public async Task<ApiResponse<RecepcionDTO>> IniciarWalkInAsync(IniciarRecepcionWalkInDTO dto, string usuarioId)
@@ -446,97 +465,112 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Taller
             // 8. Generar número de OS
             var numeroOs = await GenerarNumeroOsAsync();
 
-            // 9. Crear OrdenServicio (sin CitaId, TipoIngreso = WalkIn)
-            var os = new OrdenServicio
+            var strategy = context.Database.CreateExecutionStrategy();
+            Recepcion recepcion = null!;
+            OrdenServicio os = null!;
+            try
             {
-                NumeroOs = numeroOs,
-                CitaId = null,
-                VehiculoId = dto.VehiculoId,
-                ClienteId = dto.ClienteId,
-                FechaApertura = TimeHelper.Now,
-                EstadoId = estadoAbierta.EstadoId,
-                KilometrajeIngreso = dto.Kilometraje,
-                NivelCombustible = dto.NivelCombustiblePorcentaje / 100m,
-                TipoIngreso = TipoIngreso.WalkIn,
-                EsGarantia = false,
-                ObservacionesApertura = dto.ObservacionesApertura,
-                SucursalId = dto.SucursalId,
-                Activo = true,
-                UsuarioCreaId = usuarioId,
-                FechaCreacion = TimeHelper.Now
-            };
-            context.OrdenesServicio.Add(os);
+                await strategy.ExecuteAsync(async () =>
+                {
+                    await using var transaction = await context.Database.BeginTransactionAsync();
 
-            // 10. Agregar servicio seleccionado
-            var servicioOs = new OsServicio
+                    // 9. Crear OrdenServicio (sin CitaId, TipoIngreso = WalkIn)
+                    os = new OrdenServicio
+                    {
+                        NumeroOs = numeroOs,
+                        CitaId = null,
+                        VehiculoId = dto.VehiculoId,
+                        ClienteId = dto.ClienteId,
+                        FechaApertura = TimeHelper.Now,
+                        EstadoId = estadoAbierta.EstadoId,
+                        KilometrajeIngreso = dto.Kilometraje,
+                        NivelCombustible = dto.NivelCombustiblePorcentaje / 100m,
+                        TipoIngreso = TipoIngreso.WalkIn,
+                        EsGarantia = false,
+                        ObservacionesApertura = dto.ObservacionesApertura,
+                        SucursalId = dto.SucursalId,
+                        Activo = true,
+                        UsuarioCreaId = usuarioId,
+                        FechaCreacion = TimeHelper.Now
+                    };
+                    context.OrdenesServicio.Add(os);
+
+                    // 10. Agregar servicio seleccionado
+                    var servicioOs = new OsServicio
+                    {
+                        TipoServicioId = dto.TipoServicioId,
+                        DescripcionTrabajo = tipoServicio.Nombre,
+                        Estado = EstadoServicioOS.Pendiente,
+                        PrecioUnitario = tipoServicio.PrecioBase,
+                        Cantidad = 1,
+                        Observaciones = dto.MotivoVisita,
+                        Activo = true,
+                        UsuarioCreaId = usuarioId,
+                        FechaCreacion = TimeHelper.Now
+                    };
+                    servicioOs.CalcularSubtotal();
+                    os.Servicios.Add(servicioOs);
+
+                    // 11. Crear Recepción con todos los campos del wizard
+                    recepcion = new Recepcion
+                    {
+                        OrdenServicio = os,
+                        FechaHoraRecepcion = TimeHelper.Now,
+                        RecibidoPorId = usuarioId,
+                        EntregadoPor = dto.EntregadoPor,
+                        EsPropietarioQuienEntrega = dto.EsPropietarioQuienEntrega,
+                        RelacionEntregante = dto.RelacionEntregante,
+                        TelefonoEntregante = dto.TelefonoEntregante,
+                        DanosExteriorJson = dto.DanosExteriorJson,
+                        LlantaRepuesto = dto.LlantaRepuesto,
+                        Gato = dto.Gato,
+                        Triangulos = dto.Triangulos,
+                        Extintor = dto.Extintor,
+                        Herramientas = dto.Herramientas,
+                        Radio = dto.Radio,
+                        Tapetes = dto.Tapetes,
+                        Antena = dto.Antena,
+                        EspejoIzquierdo = dto.EspejoIzquierdo,
+                        EspejoDerecho = dto.EspejoDerecho,
+                        Limpiaparabrisas = dto.Limpiaparabrisas,
+                        PlacaDelantera = dto.PlacaDelantera,
+                        PlacaTrasera = dto.PlacaTrasera,
+                        TapaCombustible = dto.TapaCombustible,
+                        ManualVehiculo = dto.ManualVehiculo,
+                        SegundaLlave = dto.SegundaLlave,
+                        InspeccionRuedasJson = dto.InspeccionRuedasJson,
+                        NivelAceiteOk = dto.NivelAceiteOk,
+                        NivelRefrigeranteOk = dto.NivelRefrigeranteOk,
+                        NivelLiquidoFrenosOk = dto.NivelLiquidoFrenosOk,
+                        BateriaOk = dto.BateriaOk,
+                        ObservacionesGenerales = dto.ObservacionesGenerales,
+                        FirmaClienteBase64 = dto.FirmaClienteBase64,
+                        ChecklistCompletado = true,
+                        Activo = true,
+                        UsuarioCreaId = usuarioId,
+                        FechaCreacion = TimeHelper.Now
+                    };
+                    context.Recepciones.Add(recepcion);
+
+                    // 12. Actualizar kilometraje del vehiculo
+                    vehiculo.ActualizarKilometraje(dto.Kilometraje);
+
+                    await context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                });
+
+                // 13. Cargar navegaciones para DTO
+                recepcion.OrdenServicio = os;
+                os.Vehiculo = vehiculo;
+                os.Cliente = cliente;
+                os.Estado = estadoAbierta;
+
+                return ApiResponse<RecepcionDTO>.ok(MapToDto(recepcion), "Recepción Walk-In y Orden de Servicio creadas exitosamente.");
+            }
+            catch (Exception ex)
             {
-                TipoServicioId = dto.TipoServicioId,
-                DescripcionTrabajo = tipoServicio.Nombre,
-                Estado = EstadoServicioOS.Pendiente,
-                PrecioUnitario = tipoServicio.PrecioBase,
-                Cantidad = 1,
-                Observaciones = dto.MotivoVisita,
-                Activo = true,
-                UsuarioCreaId = usuarioId,
-                FechaCreacion = TimeHelper.Now
-            };
-            servicioOs.CalcularSubtotal();
-            os.Servicios.Add(servicioOs);
-
-            // 11. Crear Recepción con todos los campos del wizard
-            var recepcion = new Recepcion
-            {
-                OrdenServicio = os,
-                FechaHoraRecepcion = TimeHelper.Now,
-                RecibidoPorId = usuarioId,
-                EntregadoPor = dto.EntregadoPor,
-                EsPropietarioQuienEntrega = dto.EsPropietarioQuienEntrega,
-                RelacionEntregante = dto.RelacionEntregante,
-                TelefonoEntregante = dto.TelefonoEntregante,
-                DanosExteriorJson = dto.DanosExteriorJson,
-                LlantaRepuesto = dto.LlantaRepuesto,
-                Gato = dto.Gato,
-                Triangulos = dto.Triangulos,
-                Extintor = dto.Extintor,
-                Herramientas = dto.Herramientas,
-                Radio = dto.Radio,
-                Tapetes = dto.Tapetes,
-                Antena = dto.Antena,
-                EspejoIzquierdo = dto.EspejoIzquierdo,
-                EspejoDerecho = dto.EspejoDerecho,
-                Limpiaparabrisas = dto.Limpiaparabrisas,
-                PlacaDelantera = dto.PlacaDelantera,
-                PlacaTrasera = dto.PlacaTrasera,
-                TapaCombustible = dto.TapaCombustible,
-                ManualVehiculo = dto.ManualVehiculo,
-                SegundaLlave = dto.SegundaLlave,
-                InspeccionRuedasJson = dto.InspeccionRuedasJson,
-                NivelAceiteOk = dto.NivelAceiteOk,
-                NivelRefrigeranteOk = dto.NivelRefrigeranteOk,
-                NivelLiquidoFrenosOk = dto.NivelLiquidoFrenosOk,
-                BateriaOk = dto.BateriaOk,
-                ObservacionesGenerales = dto.ObservacionesGenerales,
-                FirmaClienteBase64 = dto.FirmaClienteBase64,
-                ChecklistCompletado = true,
-                Activo = true,
-                UsuarioCreaId = usuarioId,
-                FechaCreacion = TimeHelper.Now
-            };
-            context.Recepciones.Add(recepcion);
-
-            // 12. Actualizar kilometraje del vehiculo
-            vehiculo.ActualizarKilometraje(dto.Kilometraje);
-
-            // 13. SaveChanges (todo en una transacción)
-            await context.SaveChangesAsync();
-
-            // 14. Cargar navegaciones para DTO
-            recepcion.OrdenServicio = os;
-            os.Vehiculo = vehiculo;
-            os.Cliente = cliente;
-            os.Estado = estadoAbierta;
-
-            return ApiResponse<RecepcionDTO>.ok(MapToDto(recepcion), "Recepción Walk-In y Orden de Servicio creadas exitosamente.");
+                return ApiResponse<RecepcionDTO>.fail(500, null, $"Error al iniciar recepción Walk-In: {ex.Message}");
+            }
         }
 
         #region Helpers
