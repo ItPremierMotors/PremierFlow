@@ -55,6 +55,15 @@ namespace PremierFlow.Infrastructure.Persistence
         public DbSet<AsignacionTecnico> AsignacionesTecnico { get; set; } = null!;
 
         #endregion
+        #region CRM
+
+        public DbSet<Lead> Leads { get; set; } = null!;
+        public DbSet<Oportunidad> Oportunidades { get; set; } = null!;
+        public DbSet<ActividadCrm> ActividadesCrm { get; set; } = null!;
+        public DbSet<NotaCrm> NotasCrm { get; set; } = null!;
+        public DbSet<CotizacionVehiculo> CotizacionesVehiculo { get; set; } = null!;
+
+        #endregion
 
         protected override void OnModelCreating(ModelBuilder builder)
         {

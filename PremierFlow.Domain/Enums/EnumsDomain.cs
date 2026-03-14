@@ -175,7 +175,7 @@ namespace PremierFlow.Domain.Enums
     {
         Manual,
         Automatica,
-        CVT ,
+        CVT,
         DualClutch,
         Semiautomatica
     }
@@ -202,4 +202,85 @@ namespace PremierFlow.Domain.Enums
         Regular = 2,
         Bueno = 3
     }
+
+    ///<Summary>
+    /// Origen del lead para seguimiento comercial CRM.
+    /// </Summary>
+    public enum OrigenLead
+    {
+        Web = 1,
+        WhatsApp = 2,
+        Llamada = 3,
+        Showroom = 4,
+        Referido = 5,
+        RedesSociales = 6,
+        Evento = 7,
+        Recompra = 8,
+        Otro = 99
+    }
+    /// <summary>
+    /// Estado del lead en el proceso comercial (CRM).
+    /// </summary>
+    public enum EstadoLead
+    {
+        Nuevo = 1,
+        Contactado = 2,
+        Calificado = 3,
+        ConvertidoAOportunidad = 4,
+        Descartado = 6
+    }
+    /// <summary>
+    /// / Etapas de la oportunidad comercial en el CRM
+    /// </summary>
+    public enum EtapaOportunidad
+    {
+        Prospeccion = 1,
+        Contacto = 2,
+        Necesidades = 3,
+        Cotizacion = 4,
+        Negociacion = 5,
+        TestDrive = 6,
+        Cierre = 7
+    }
+    //<summary>
+    /// Resultado final de la oportunidad comercial.
+    /// </summary>
+    public enum ResultadoOportunidad
+    {
+        Ganada = 1,
+        Perdida = 2,
+        Cancelada = 3
+    }
+
+    public enum DireccionActividad
+    {
+        Entrante = 1,
+        Saliente = 2
+    }
+    public enum TipoActividadCrm
+    {
+        Llamada = 1,
+        WhatsApp = 2,
+        Email = 3,
+        Visita = 4,
+        TestDrive = 5,
+        Reunion = 6,
+        SeguimientoAutomatico = 7
+    }
+    public enum EstadoActividad
+    {
+        Pendiente = 1,
+        Completada = 2,
+        Cancelada = 3,
+        Vencida = 4
+    }
+
+    public enum EstadoCotizacion
+    {
+        Vigente = 1,
+        Aceptada = 2,
+        Rechazada = 3,
+        Vencida = 4
+    }
+
 }

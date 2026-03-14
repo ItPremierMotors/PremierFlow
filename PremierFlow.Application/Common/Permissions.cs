@@ -92,6 +92,32 @@ namespace PremierFlow.Application.Common
         public const string RolEditar = "Rol.Editar";
         public const string PermisoVer = "Permiso.Ver";
         public const string PermisoEditar = "Permiso.Editar";
+          
+        // CRM - Leads
+        public const string LeadVer = "Lead.Ver";
+        public const string LeadCrear = "Lead.Crear";
+        public const string LeadEditar = "Lead.Editar";
+        public const string LeadEliminar = "Lead.Eliminar";
+        public const string LeadAsignar = "Lead.Asignar";
+        public const string LeadReasignar = "Lead.Reasignar";
+
+        // CRM - Oportunidades
+        public const string OportunidadVer = "Oportunidad.Ver";
+        public const string OportunidadCrear = "Oportunidad.Crear";
+        public const string OportunidadEditar = "Oportunidad.Editar";
+        public const string OportunidadCerrar = "Oportunidad.Cerrar";
+
+        // CRM - Actividades
+        public const string ActividadCrmVer = "ActividadCrm.Ver";
+        public const string ActividadCrmCrear = "ActividadCrm.Crear";
+        public const string ActividadCrmEditar = "ActividadCrm.Editar";
+
+        // CRM - Cotizaciones
+        public const string CotizacionVer = "Cotizacion.Ver";
+        public const string CotizacionCrear = "Cotizacion.Crear";
+
+        // CRM - Dashboard
+        public const string DashboardCrmVer = "DashboardCrm.Ver";
 
         public static List<string> All => new()
         {
@@ -113,7 +139,14 @@ namespace PremierFlow.Application.Common
             CatalogoModeloVer, CatalogoModeloCrear, CatalogoModeloEditar, CatalogoModeloEliminar,
             CatalogoVersionVer, CatalogoVersionCrear, CatalogoVersionEditar, CatalogoVersionEliminar,
             CatalogoServicioVer, CatalogoServicioCrear, CatalogoServicioEditar, CatalogoServicioEliminar,
-            CatalogoTecnicoVer, CatalogoTecnicoCrear, CatalogoTecnicoEditar, CatalogoTecnicoEliminar
+            CatalogoTecnicoVer, CatalogoTecnicoCrear, CatalogoTecnicoEditar, CatalogoTecnicoEliminar,
+             // CRM
+            LeadVer, LeadCrear, LeadEditar, LeadEliminar, LeadAsignar, LeadReasignar,
+            OportunidadVer, OportunidadCrear, OportunidadEditar, OportunidadCerrar,
+            ActividadCrmVer, ActividadCrmCrear, ActividadCrmEditar,
+            CotizacionVer, CotizacionCrear,
+            DashboardCrmVer
+
         };
     }
 }

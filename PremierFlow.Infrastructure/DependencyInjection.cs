@@ -25,6 +25,8 @@ using PremierFlow.Application.Interfaces.Dashboard;
 using PremierFlow.Infrastructure.Persistence.Repositories.Services.Dashboard;
 using PremierFlow.Infrastructure.Security;
 using PremierFlow.Application.Interfaces.BlobAzure;
+using PremierFlow.Application.Interfaces.Crm;
+using PremierFlow.Infrastructure.Persistence.Repositories.Services.Crm;
 
 namespace PremierFlow.Infrastructure
 {
@@ -99,6 +101,13 @@ namespace PremierFlow.Infrastructure
 
             // Fase 4: Dashboard
             services.AddScoped<IDashboardService, DashboardService>();
+            
+           // Fase 5: CRM
+            services.AddScoped<ILeadService, LeadService>();
+            services.AddScoped<IOportunidadService, OportunidadService>();
+            services.AddScoped<IActividadCrmService, ActividadCrmService>();
+            services.AddScoped<INotaCrmService, NotaCrmService>();
+            services.AddScoped<ICotizacionVehiculoService, CotizacionVehiculoService>();
 
             //servicio de seguridad
             services.AddScoped<IJwtTokenService, JwtTokenService>();
