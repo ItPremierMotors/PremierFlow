@@ -99,7 +99,6 @@ namespace PremierFlow.Application.Common
         public const string LeadEditar = "Lead.Editar";
         public const string LeadEliminar = "Lead.Eliminar";
         public const string LeadAsignar = "Lead.Asignar";
-        public const string LeadReasignar = "Lead.Reasignar";
 
         // CRM - Oportunidades
         public const string OportunidadVer = "Oportunidad.Ver";
@@ -141,7 +140,7 @@ namespace PremierFlow.Application.Common
             CatalogoServicioVer, CatalogoServicioCrear, CatalogoServicioEditar, CatalogoServicioEliminar,
             CatalogoTecnicoVer, CatalogoTecnicoCrear, CatalogoTecnicoEditar, CatalogoTecnicoEliminar,
              // CRM
-            LeadVer, LeadCrear, LeadEditar, LeadEliminar, LeadAsignar, LeadReasignar,
+            LeadVer, LeadCrear, LeadEditar, LeadEliminar, LeadAsignar,
             OportunidadVer, OportunidadCrear, OportunidadEditar, OportunidadCerrar,
             ActividadCrmVer, ActividadCrmCrear, ActividadCrmEditar,
             CotizacionVer, CotizacionCrear,

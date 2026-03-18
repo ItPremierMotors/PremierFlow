@@ -7,9 +7,9 @@ namespace PremierFlow.Application.Interfaces.Crm
     public interface ILeadService
     {
         Task<ApiResponse<LeadDTO>> GetByIdAsync(int leadId); //obtenemos un lead por su ID
-        Task<ApiResponse<List<LeadDTO>>> GetAllAsync(int? sucursalId); //obtenemos todos los leads, opcionalmente filtrados por sucursal
+        Task<ApiResponse<List<LeadDTO>>> GetAllAsync(int? sucursalId, string? vendedorId = null); //obtenemos todos los leads, opcionalmente filtrados por sucursal
         Task<ApiResponse<List<LeadDTO>>> GetByVendedorAsync(string vendedorId); //obtenemos los leads asignados a un vendedor específico
-        Task<ApiResponse<List<LeadDTO>>> GetByEstadoAsync(EstadoLead estado, int? sucursalId); //obtenemos los leads filtrados por su estado (Nuevo, Contactado, Calificado, Descartado) y opcionalmente por sucursal
+        Task<ApiResponse<List<LeadDTO>>> GetByEstadoAsync(EstadoLead estado, int? sucursalId, string? vendedorId); //obtenemos los leads filtrados por su estado (Nuevo, Contactado, Calificado, Descartado) y opcionalmente por sucursal
         Task<ApiResponse<List<LeadDTO>>> GetSinAsignarAsync(int? sucursalId); //obtenemos los leads que no tienen un vendedor asignado, opcionalmente filtrados por sucursal
         Task<ApiResponse<List<LeadDTO>>> SearchAsync(string termino); //buscamos leads por término (nombre, correo, teléfono, etc.)
         Task<ApiResponse<LeadDTO>> CreateAsync(CreateLeadDTO dto, string usuarioId); //creamos un nuevo lead a partir de un DTO con la información del lead y el ID del usuario que lo crea

@@ -20,6 +20,8 @@ namespace PremierFlow.Application.Dtos.Crm
         public int? ClienteId { get; set; }
         public string? ClienteNombre { get; set; }
         public int? VehiculoId { get; set; }
+        public int? ModeloId { get; set; }
+
         public string? VehiculoDescripcion { get; set; }
         public string VendedorId { get; set; } = null!;
         public string VendedorNombre { get; set; } = null!;
@@ -32,6 +34,7 @@ namespace PremierFlow.Application.Dtos.Crm
         public bool EstaAbierta => Resultado == null;
         public int CantidadActividades { get; set; }
         public int CantidadCotizaciones { get; set; }
+        public string? ModeloNombre { get; set; }
     }
 
     public class OportunidadDetalleDTO : OportunidadDTO
@@ -46,6 +49,7 @@ namespace PremierFlow.Application.Dtos.Crm
         public int LeadId { get; set; }
         public int? ClienteId { get; set; }
         public int? VehiculoId { get; set; }
+        public int? ModeloId { get; set; }
         public string VendedorId { get; set; } = null!;
         public int SucursalId { get; set; }
         public int ProbabilidadCierre { get; set; }
@@ -65,6 +69,12 @@ namespace PremierFlow.Application.Dtos.Crm
     {
         public int OportunidadId { get; set; }
         public string? MotivoResultado { get; set; }
+    }
+
+    public class CambiarEtapaDTO
+    {
+        public int OportunidadId { get; set; }
+        public EtapaOportunidad NuevaEtapa { get; set; }
     }
 
     /// <summary>

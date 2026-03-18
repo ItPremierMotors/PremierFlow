@@ -227,7 +227,7 @@ namespace PremierFlow.Domain.Enums
         Contactado = 2,
         Calificado = 3,
         ConvertidoAOportunidad = 4,
-        Descartado = 6
+        Descartado = 5
     }
     /// <summary>
     /// / Etapas de la oportunidad comercial en el CRM

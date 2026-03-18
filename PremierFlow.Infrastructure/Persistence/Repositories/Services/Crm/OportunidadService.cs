@@ -64,9 +64,13 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Crm
 
         public async Task<ApiResponse<bool>> CerrarGanadaAsync(CerrarOportunidadDTO dto, string usuarioId)
         {
-            var op = await context.Oportunidades.FirstOrDefaultAsync(o => o.OportunidadId == dto.OportunidadId && o.Activo);
+            var op = await context.Oportunidades
+                .Include(o => o.Cotizaciones)
+                .FirstOrDefaultAsync(o => o.OportunidadId == dto.OportunidadId && o.Activo);
             if (op == null)
                 return ApiResponse<bool>.fail(404, null, "Oportunidad no encontrada");
+            if (!op.Cotizaciones.Any(c => c.Estado == EstadoCotizacion.Aceptada))
+                return ApiResponse<bool>.fail(400, null, "Debe tener al menos una cotización aceptada para cerrar como ganada");
             try
             {
                 op.CerrarGanada();
@@ -134,17 +138,28 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Crm
             };
 
             context.Oportunidades.Add(oportunidad);
+            //marcar leads como convertido
+            var lead = await context.Leads.FirstOrDefaultAsync(l => l.LeadId == dto.LeadId);
+            if (lead != null)
+            {
+                lead.Convertir();
+                lead.UsuarioModificaId = usuarioId;
+                lead.FechaModificacion = TimeHelper.Now;
+            }
             await context.SaveChangesAsync();
             var created = await GetOportunidadQuery().FirstOrDefaultAsync(o => o.OportunidadId == oportunidad.OportunidadId);
             return ApiResponse<OportunidadDTO>.ok(await MapToDto(created!), "Oportunidad creada exitosamente");
         }
 
-        public async Task<ApiResponse<List<OportunidadDTO>>> GetAllAsync(int? sucursalId)
+        public async Task<ApiResponse<List<OportunidadDTO>>> GetAllAsync(int? sucursalId, string? VendedorId)
         {
             var query = GetOportunidadQuery().Where(o => o.Activo);
 
             if (sucursalId.HasValue)
                 query = query.Where(o => o.SucursalId == sucursalId.Value);
+
+            if (!string.IsNullOrEmpty(VendedorId))
+                query = query.Where(o => o.VendedorId == VendedorId);
         
             var ops=await query.OrderByDescending(o=>o.FechaCreacion).ToListAsync();
             var dtos = new List<OportunidadDTO>();
@@ -157,11 +172,14 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Crm
             return ApiResponse<List<OportunidadDTO>>.ok(dtos,"Oportunidades encontradas");
         }
 
-        public async Task<ApiResponse<List<OportunidadDTO>>> GetByEtapaAsync(EtapaOportunidad etapa, int? sucursalId)
+        public async Task<ApiResponse<List<OportunidadDTO>>> GetByEtapaAsync(EtapaOportunidad etapa, int? sucursalId, string? VendedorId)
         {
             var query =  GetOportunidadQuery().Where(o => o.Etapa == etapa && o.Resultado == null && o.Activo);
             if (sucursalId.HasValue)
                 query = query.Where(o => o.SucursalId == sucursalId.Value);
+
+            if (!string.IsNullOrEmpty(VendedorId))
+                query = query.Where(o => o.VendedorId == VendedorId);
             
             var ops=await query.OrderByDescending(o=>o.FechaCreacion).ToListAsync();
             var dtos = new List<OportunidadDTO>();
@@ -288,6 +306,26 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Crm
             return ApiResponse<List<OportunidadDTO>>.ok(dtos, "Oportunidades vencidas");
         }
 
+        public async Task<ApiResponse<bool>> CambiarEtapaAsync(CambiarEtapaDTO dto, string usuarioId)
+        {
+            var op = await context.Oportunidades.FirstOrDefaultAsync(o => o.OportunidadId == dto.OportunidadId && o.Activo);
+            if (op == null)
+                return ApiResponse<bool>.fail(404, null, "Oportunidad no encontrada");
+            try
+            {
+                op.CambiarEtapa(dto.NuevaEtapa);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return ApiResponse<bool>.fail(400, null, ex.Message);
+            }
+            op.UsuarioModificaId = usuarioId;
+            op.FechaModificacion = TimeHelper.Now;
+            if (await context.SaveChangesAsync() > 0)
+                return ApiResponse<bool>.ok(true, "Etapa cambiada exitosamente");
+            return ApiResponse<bool>.fail(500, null, "No se pudo cambiar la etapa");
+        }
+
         public async Task<ApiResponse<bool>> RetrocederEtapaAsync(int oportunidadId, string usuarioId)
         {
             var op=await context.Oportunidades.FirstOrDefaultAsync(o => o.OportunidadId == oportunidadId && o.Activo); 
@@ -346,7 +384,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Crm
             if (vehiculo == null)
                 return ApiResponse<bool>.fail(404, null, "Vehículo no encontrado");
 
-            if (!vehiculo.DisponibleParaVenta && vehiculo.Estado != EstadoVehiculo.Reservado)
+            if (!vehiculo.DisponibleParaVenta)
                 return ApiResponse<bool>.fail(400, null, $"El vehículo no está disponible para venta (Estado: {vehiculo.Estado})");
 
             op.VehiculoId = vehiculoId;
@@ -370,6 +408,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Crm
                 .Include(o => o.Vehiculo)
                 .Include(o => o.Actividades.Where(a => a.Activo))
                 .Include(o => o.Cotizaciones.Where(c => c.Activo))
+                .Include(o => o.Modelo)
                 .AsNoTracking();
         }
 
@@ -399,7 +438,8 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Crm
                 SucursalId = o.SucursalId,
                 SucursalNombre = o.Sucursal?.Nombre ?? "",
                 CantidadActividades = o.Actividades?.Count(a => a.Activo) ?? 0,
-                CantidadCotizaciones = o.Cotizaciones?.Count(c => c.Activo) ?? 0
+                CantidadCotizaciones = o.Cotizaciones?.Count(c => c.Activo) ?? 0,
+                ModeloNombre = o.Modelo != null ? $"{o.Modelo.Marca?.Nombre} {o.Modelo.Nombre}" : null
             };
         }
 

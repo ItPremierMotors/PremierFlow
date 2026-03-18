@@ -30,6 +30,11 @@ namespace PremierFlow.Domain.Entities
         /// </summary>
         public int? VehiculoId { get; set; }
 
+        ///<summary>
+        /// Modelo de vehículo que se está negociando, se llena al calificar el lead y se mantiene aunque luego se vincule un vehículo específico o se pierda la oportunidad.
+        /// se utiliza para mantener el registro del interés original del cliente aunque luego se pierda la oportunidad o compre otro vehículo diferente al que se vinculó inicialmente.
+        /// </summary>
+        public int? ModeloId { get; set; }
         /// <summary>
         /// Vendedor responsable de la oportunidad (ApplicationUser.Id).
         /// </summary>
@@ -75,6 +80,7 @@ namespace PremierFlow.Domain.Entities
         public virtual Lead Lead { get; set; } = null!;
         public virtual Cliente? Cliente { get; set; }
         public virtual Vehiculo? Vehiculo { get; set; }
+        public virtual Modelo? Modelo { get; set; }
         public virtual Sucursal Sucursal { get; set; } = null!;
         public virtual ICollection<ActividadCrm> Actividades { get; set; } = new List<ActividadCrm>();
         public virtual ICollection<NotaCrm> Notas { get; set; } = new List<NotaCrm>();
@@ -109,6 +115,54 @@ namespace PremierFlow.Domain.Entities
         }
 
         /// <summary>
+        /// Transiciones permitidas en el pipeline de ventas de concesionaria.
+        /// </summary>
+        private static readonly Dictionary<EtapaOportunidad, EtapaOportunidad[]> TransicionesPermitidas = new()
+        {
+            [EtapaOportunidad.Prospeccion]  = [EtapaOportunidad.Contacto, EtapaOportunidad.Necesidades],
+            [EtapaOportunidad.Contacto]     = [EtapaOportunidad.Necesidades, EtapaOportunidad.Cotizacion, EtapaOportunidad.TestDrive],
+            [EtapaOportunidad.Necesidades]  = [EtapaOportunidad.Cotizacion, EtapaOportunidad.TestDrive],
+            [EtapaOportunidad.Cotizacion]   = [EtapaOportunidad.Negociacion, EtapaOportunidad.TestDrive],
+            [EtapaOportunidad.TestDrive]    = [EtapaOportunidad.Cotizacion, EtapaOportunidad.Negociacion],
+            [EtapaOportunidad.Negociacion]  = [EtapaOportunidad.TestDrive, EtapaOportunidad.Cierre],
+            [EtapaOportunidad.Cierre]       = []
+        };
+
+        /// <summary>
+        /// Cambia a una etapa específica validando las transiciones permitidas del pipeline.
+        /// Permite avanzar solo a etapas válidas y retroceder a cualquier etapa anterior.
+        /// </summary>
+        public void CambiarEtapa(EtapaOportunidad nuevaEtapa)
+        {
+            if (!EstaAbierta)
+                throw new InvalidOperationException("No se puede cambiar la etapa de una oportunidad cerrada");
+
+            if (nuevaEtapa == Etapa)
+                throw new InvalidOperationException("La oportunidad ya está en esa etapa");
+
+            // Retroceder siempre está permitido
+            if (nuevaEtapa < Etapa)
+            {
+                Etapa = nuevaEtapa;
+                return;
+            }
+
+            // Avanzar: solo a etapas permitidas
+            if (!TransicionesPermitidas.TryGetValue(Etapa, out var permitidas) || !permitidas.Contains(nuevaEtapa))
+                throw new InvalidOperationException($"No se puede mover de {Etapa} a {nuevaEtapa}");
+
+            Etapa = nuevaEtapa;
+        }
+
+        /// <summary>
+        /// Obtiene las etapas a las que se puede mover desde la etapa actual.
+        /// </summary>
+        public static EtapaOportunidad[] GetTransicionesPermitidas(EtapaOportunidad etapaActual)
+        {
+            return TransicionesPermitidas.TryGetValue(etapaActual, out var permitidas) ? permitidas : [];
+        }
+
+        /// <summary>
         /// Retrocede a la etapa anterior del pipeline.
         /// </summary>
         public void RetrocederEtapa()
@@ -129,9 +183,6 @@ namespace PremierFlow.Domain.Entities
         {
             if (!EstaAbierta)
                 throw new InvalidOperationException("La oportunidad ya está cerrada");
-
-            if (VehiculoId == null)
-                throw new InvalidOperationException("Debe vincular un vehículo antes de cerrar como ganada");
 
             Resultado = ResultadoOportunidad.Ganada;
             FechaCierre = TimeHelper.Now;

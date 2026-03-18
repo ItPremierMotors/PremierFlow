@@ -69,6 +69,18 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Crm
           public async Task<ApiResponse<ActividadCrmDTO>> CreateAsync(CreateActividadCrmDTO dto, string usuarioId)
           {
                if (dto.LeadId == null && dto.OportunidadId == null) return ApiResponse<ActividadCrmDTO>.fail(400, null, "Debe asociar la actividad a un Lead o una Oportunidad.");
+              
+              //si la actividad esta amarrado a un lead debemos marcarlo como contactado
+              if(dto.LeadId.HasValue) {
+                    var lead = await context.Leads.FirstOrDefaultAsync(l => l.LeadId == dto.LeadId && l.Activo);
+                    if(lead != null && lead.SinContactar)
+                    {
+                         lead.MarcarContactado();
+                         lead.UsuarioModificaId = usuarioId;
+                         lead.FechaModificacion = TimeHelper.Now;
+                    }
+              }           
+        
                var actividad = new ActividadCrm
                {
                     LeadId = dto.LeadId,

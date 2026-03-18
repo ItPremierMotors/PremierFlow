@@ -155,7 +155,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Crm
             return ApiResponse<bool>.fail(500, null, "Error al descartar el lead");
         }
 
-        public async Task<ApiResponse<List<LeadDTO>>> GetAllAsync(int? sucursalId)
+        public async Task<ApiResponse<List<LeadDTO>>> GetAllAsync(int? sucursalId, string? vendedorId = null)
         {
 
             var query = context.Leads
@@ -163,10 +163,13 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Crm
                 .Include(l => l.Oportunidades.Where(o => o.Activo))
                 .Include(l => l.Actividades.Where(a => a.Activo))
                 .AsNoTracking()
-                .Where(l => l.Activo);
+                .Where(l => l.Activo && l.Estado != EstadoLead.ConvertidoAOportunidad && l.Estado != EstadoLead.Descartado);
 
             if (sucursalId.HasValue)
                 query = query.Where(l => l.SucursalId == sucursalId.Value);
+
+            if (!string.IsNullOrEmpty(vendedorId))
+                query = query.Where(l => l.VendedorAsignadoId == vendedorId);
             var leads = await query.OrderByDescending(l => l.FechaIngreso).ToListAsync();
             var dtos = new List<LeadDTO>();
             foreach (var lead in leads)
@@ -177,7 +180,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Crm
             return ApiResponse<List<LeadDTO>>.ok(dtos, "Leads obtenidos exitosamente");
         }
 
-        public async Task<ApiResponse<List<LeadDTO>>> GetByEstadoAsync(EstadoLead estado, int? sucursalId)
+        public async Task<ApiResponse<List<LeadDTO>>> GetByEstadoAsync(EstadoLead estado, int? sucursalId, string? vendedorId)
         {
             var query = context.Leads
                 .Include(l => l.Sucursal)
@@ -185,6 +188,8 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Crm
                 .Where(l => l.Estado == estado && l.Activo);
             if (sucursalId.HasValue)
                 query = query.Where(l => l.SucursalId == sucursalId.Value);
+            if (!string.IsNullOrEmpty(vendedorId))
+                query = query.Where(l => l.VendedorAsignadoId == vendedorId);
 
             var leads = await query.OrderByDescending(l => l.FechaIngreso).ToListAsync();
             var dtos = new List<LeadDTO>();

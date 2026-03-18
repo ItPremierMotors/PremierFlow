@@ -78,6 +78,7 @@ namespace PremierFlow.Infrastructure.Configurations
             builder.Property(e => e.LeadId).HasColumnName("lead_id");
             builder.Property(e => e.ClienteId).HasColumnName("cliente_id");
             builder.Property(e => e.VehiculoId).HasColumnName("vehiculo_id");
+            builder.Property(e => e.ModeloId).HasColumnName("modelo_id");
             builder.Property(e => e.VendedorId).HasColumnName("vendedor_id").HasMaxLength(450).IsRequired();
             builder.Property(e => e.SucursalId).HasColumnName("sucursal_id");
 
@@ -102,6 +103,7 @@ namespace PremierFlow.Infrastructure.Configurations
             builder.HasOne(e => e.Cliente).WithMany().HasForeignKey(e => e.ClienteId).OnDelete(DeleteBehavior.Restrict);
             builder.HasOne(e => e.Vehiculo).WithMany().HasForeignKey(e => e.VehiculoId).OnDelete(DeleteBehavior.Restrict);
             builder.HasOne(e => e.Sucursal).WithMany().HasForeignKey(e => e.SucursalId).OnDelete(DeleteBehavior.Restrict);
+            builder.HasOne(e => e.Modelo).WithMany().HasForeignKey(e => e.ModeloId).OnDelete(DeleteBehavior.SetNull);
 
             // Índices
             builder.HasIndex(e => e.CodigoOportunidad).IsUnique().HasDatabaseName("ix_oportunidades_codigo");
