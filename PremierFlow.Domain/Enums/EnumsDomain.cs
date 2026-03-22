@@ -223,24 +223,22 @@ namespace PremierFlow.Domain.Enums
     /// </summary>
     public enum EstadoLead
     {
-        Nuevo = 1,
-        Contactado = 2,
-        Calificado = 3,
-        ConvertidoAOportunidad = 4,
-        Descartado = 5
+        Incompleto = 1,
+        Nuevo = 2,
+        Contactado = 3,
+        Calificado = 4,
+        ConvertidoAOportunidad = 5,
+        Descartado = 6
     }
     /// <summary>
     /// / Etapas de la oportunidad comercial en el CRM
     /// </summary>
     public enum EtapaOportunidad
     {
-        Prospeccion = 1,
-        Contacto = 2,
-        Necesidades = 3,
-        Cotizacion = 4,
-        Negociacion = 5,
-        TestDrive = 6,
-        Cierre = 7
+        Necesidades = 1,
+        Cotizacion = 2,
+        Negociacion = 3,
+        Cierre = 4
     }
     //<summary>
     /// Resultado final de la oportunidad comercial.
@@ -265,7 +263,7 @@ namespace PremierFlow.Domain.Enums
         Visita = 4,
         TestDrive = 5,
         Reunion = 6,
-        SeguimientoAutomatico = 7
+
     }
     public enum EstadoActividad
     {
@@ -280,7 +278,18 @@ namespace PremierFlow.Domain.Enums
         Vigente = 1,
         Aceptada = 2,
         Rechazada = 3,
-        Vencida = 4
+        Cancelada=4
+    }
+    public enum TipoVehiculo
+    {
+        Nuevo = 1,
+        Usado = 2
+    }
+    public enum LineaNegocio
+    {
+        Vehiculos=1,
+        Agricolas=2,
+        Mixtos=3
     }
 
 }

@@ -5,7 +5,7 @@ using PremierFlow.Domain.Enums;
 namespace PremierFlow.Domain.Entities
 {
     /// <summary>
-    /// Negociación concreta de venta vinculada a un lead y opcionalmente a un vehículo.
+    /// Negociación concreta de venta vinculada a un lead y opcionalmente a un modelo de vehículo.
     /// </summary>
     public class Oportunidad : SoftDeletableEntity
     {
@@ -19,16 +19,6 @@ namespace PremierFlow.Domain.Entities
         #region Vinculación
 
         public int LeadId { get; set; }
-
-        /// <summary>
-        /// Cliente formal (se llena al calificar el lead).
-        /// </summary>
-        public int? ClienteId { get; set; }
-
-        /// <summary>
-        /// Vehículo específico del inventario que se está negociando.
-        /// </summary>
-        public int? VehiculoId { get; set; }
 
         ///<summary>
         /// Modelo de vehículo que se está negociando, se llena al calificar el lead y se mantiene aunque luego se vincule un vehículo específico o se pierda la oportunidad.
@@ -46,7 +36,7 @@ namespace PremierFlow.Domain.Entities
 
         #region Pipeline
 
-        public EtapaOportunidad Etapa { get; set; } = EtapaOportunidad.Prospeccion;
+        public EtapaOportunidad Etapa { get; set; } = EtapaOportunidad.Necesidades;
 
         /// <summary>
         /// Probabilidad de cierre (0-100).
@@ -78,8 +68,7 @@ namespace PremierFlow.Domain.Entities
         #region Navegación
 
         public virtual Lead Lead { get; set; } = null!;
-        public virtual Cliente? Cliente { get; set; }
-        public virtual Vehiculo? Vehiculo { get; set; }
+
         public virtual Modelo? Modelo { get; set; }
         public virtual Sucursal Sucursal { get; set; } = null!;
         public virtual ICollection<ActividadCrm> Actividades { get; set; } = new List<ActividadCrm>();
@@ -101,7 +90,7 @@ namespace PremierFlow.Domain.Entities
         public bool FueGanada => Resultado == ResultadoOportunidad.Ganada;
 
         /// <summary>
-        /// Avanza a la siguiente etapa del pipeline.
+        /// Avanza a la siguiente etapa del pipeline de manera lineal.
         /// </summary>
         public void AvanzarEtapa()
         {
@@ -119,12 +108,9 @@ namespace PremierFlow.Domain.Entities
         /// </summary>
         private static readonly Dictionary<EtapaOportunidad, EtapaOportunidad[]> TransicionesPermitidas = new()
         {
-            [EtapaOportunidad.Prospeccion]  = [EtapaOportunidad.Contacto, EtapaOportunidad.Necesidades],
-            [EtapaOportunidad.Contacto]     = [EtapaOportunidad.Necesidades, EtapaOportunidad.Cotizacion, EtapaOportunidad.TestDrive],
-            [EtapaOportunidad.Necesidades]  = [EtapaOportunidad.Cotizacion, EtapaOportunidad.TestDrive],
-            [EtapaOportunidad.Cotizacion]   = [EtapaOportunidad.Negociacion, EtapaOportunidad.TestDrive],
-            [EtapaOportunidad.TestDrive]    = [EtapaOportunidad.Cotizacion, EtapaOportunidad.Negociacion],
-            [EtapaOportunidad.Negociacion]  = [EtapaOportunidad.TestDrive, EtapaOportunidad.Cierre],
+            [EtapaOportunidad.Necesidades]  = [EtapaOportunidad.Cotizacion],
+            [EtapaOportunidad.Cotizacion]   = [EtapaOportunidad.Negociacion],
+            [EtapaOportunidad.Negociacion]  = [EtapaOportunidad.Cierre],
             [EtapaOportunidad.Cierre]       = []
         };
 
@@ -170,7 +156,7 @@ namespace PremierFlow.Domain.Entities
             if (!EstaAbierta)
                 throw new InvalidOperationException("No se puede retroceder una oportunidad cerrada");
 
-            if (Etapa == EtapaOportunidad.Prospeccion)
+            if (Etapa == EtapaOportunidad.Necesidades)
                 throw new InvalidOperationException("La oportunidad ya está en la primera etapa");
 
             Etapa = (EtapaOportunidad)((int)Etapa - 1);

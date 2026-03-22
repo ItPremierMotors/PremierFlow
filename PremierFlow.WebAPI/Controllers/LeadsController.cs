@@ -52,6 +52,12 @@ namespace PremierFlow.WebAPI.Controllers
             return StatusCode(result.StatusCode, result);
         }
 
+        [HttpGet("GetLeadFrios/{sucursalId}")]
+        public async Task<IActionResult> GetLeadFrios(int sucursalId)
+        {
+            var result =await _leadService.GetAlertasLeadsFriosAsync(sucursalId);
+            return StatusCode(result.StatusCode, result);
+        }
         [HttpGet("GetSinAsignar")]
         public async Task<IActionResult> GetSinAsignar([FromQuery] int? sucursalId)
         {
@@ -110,6 +116,17 @@ namespace PremierFlow.WebAPI.Controllers
             return StatusCode(result.StatusCode, result);
         }
 
+        [HttpPut("MarcarContactado/{leadId}")]
+        public async Task<IActionResult> MarcarContactado(int leadId)
+        {
+            var userId = GetUserId();
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized(new { Message = "Usuario no autenticado." });
+
+            var result = await _leadService.MarcarContactadoAsync(leadId, userId);
+            return StatusCode(result.StatusCode, result);
+        }
+
         [HttpPut("Descartar")]
         public async Task<IActionResult> Descartar([FromBody] DescartarLeadDTO dto)
         {
@@ -121,15 +138,6 @@ namespace PremierFlow.WebAPI.Controllers
             return StatusCode(result.StatusCode, result);
         }
 
-        [HttpPost("{leadId}/ConvertirAOportunidad")]
-        public async Task<IActionResult> ConvertirAOportunidad(int leadId, [FromBody] CreateOportunidadDTO dto)
-        {
-            var userId = GetUserId();
-            if (string.IsNullOrEmpty(userId))
-                return Unauthorized(new { Message = "Usuario no autenticado." });
 
-            var result = await _leadService.ConvertirAOportunidadAsync(leadId, dto, userId);
-            return StatusCode(result.StatusCode, result);
-        }
     }
 }

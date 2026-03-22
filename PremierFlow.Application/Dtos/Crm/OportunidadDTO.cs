@@ -17,12 +17,10 @@ namespace PremierFlow.Application.Dtos.Crm
         // Datos relacionados
         public int LeadId { get; set; }
         public string LeadNombre { get; set; } = null!;
-        public int? ClienteId { get; set; }
-        public string? ClienteNombre { get; set; }
-        public int? VehiculoId { get; set; }
+       
         public int? ModeloId { get; set; }
 
-        public string? VehiculoDescripcion { get; set; }
+      
         public string VendedorId { get; set; } = null!;
         public string VendedorNombre { get; set; } = null!;
         public int SucursalId { get; set; }
@@ -47,8 +45,6 @@ namespace PremierFlow.Application.Dtos.Crm
     public class CreateOportunidadDTO
     {
         public int LeadId { get; set; }
-        public int? ClienteId { get; set; }
-        public int? VehiculoId { get; set; }
         public int? ModeloId { get; set; }
         public string VendedorId { get; set; } = null!;
         public int SucursalId { get; set; }
@@ -59,16 +55,19 @@ namespace PremierFlow.Application.Dtos.Crm
     public class UpdateOportunidadDTO
     {
         public int OportunidadId { get; set; }
-        public int? ClienteId { get; set; }
-        public int? VehiculoId { get; set; }
         public int ProbabilidadCierre { get; set; }
         public DateTime? FechaCierreEstimada { get; set; }
+    }
+
+    public class CerrarGanadaDTO
+    {
+        public int OportunidadId{set; get;}
     }
 
     public class CerrarOportunidadDTO
     {
         public int OportunidadId { get; set; }
-        public string? MotivoResultado { get; set; }
+        public string MotivoResultado { get; set; }= null!;
     }
 
     public class CambiarEtapaDTO

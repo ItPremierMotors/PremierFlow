@@ -58,5 +58,16 @@ namespace PremierFlow.WebAPI.Controllers
             var result = await _cotizacionService.RechazarAsync(cotizacionVehiculoId, userId);
             return StatusCode(result.StatusCode, result);
         }
+        [HttpPut("Cancelar/{cotizacionVehiculoId}")]
+        public async Task<IActionResult> Cancelar(int cotizacionVehiculoId)
+        {
+            var userId = GetUserId();
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized(new { Message = "Usuario no autenticado." });
+
+            var result = await _cotizacionService.CancelarAsync(cotizacionVehiculoId, userId);
+            return StatusCode(result.StatusCode, result);
+        }
+
     }
 }

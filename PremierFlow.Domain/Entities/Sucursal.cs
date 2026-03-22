@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using PremierFlow.Domain.Enums;
 
 namespace PremierFlow.Domain.Entities
 {
@@ -15,6 +16,7 @@ namespace PremierFlow.Domain.Entities
         public string Ciudad { get; set; } = null!; // "San Pedro Sula", "Tegucigalpa"
         public string? Direccion { get; set; } 
         public bool Activa { get; set; } = true;
+       public LineaNegocio LineaNegocio { get; set; } = LineaNegocio.Vehiculos;
         // Navegación
         public virtual ICollection<Ubicacion> Ubicaciones { get; set; } = new List<Ubicacion>();
     }

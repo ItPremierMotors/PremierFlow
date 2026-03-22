@@ -68,22 +68,30 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Crm
 
           public async Task<ApiResponse<ActividadCrmDTO>> CreateAsync(CreateActividadCrmDTO dto, string usuarioId)
           {
-               if (dto.LeadId == null && dto.OportunidadId == null) return ApiResponse<ActividadCrmDTO>.fail(400, null, "Debe asociar la actividad a un Lead o una Oportunidad.");
-              
-              //si la actividad esta amarrado a un lead debemos marcarlo como contactado
-              if(dto.LeadId.HasValue) {
-                    var lead = await context.Leads.FirstOrDefaultAsync(l => l.LeadId == dto.LeadId && l.Activo);
-                    if(lead != null && lead.SinContactar)
-                    {
-                         lead.MarcarContactado();
-                         lead.UsuarioModificaId = usuarioId;
-                         lead.FechaModificacion = TimeHelper.Now;
-                    }
-              }           
-        
+              if (!dto.LeadId.HasValue && !dto.OportunidadId.HasValue)
+                  return ApiResponse<ActividadCrmDTO>.fail(400, null, "Debe asociar la actividad a un Lead o una Oportunidad.");
+
+              // Si solo se envía OportunidadId, derivar el LeadId automáticamente
+              if(dto.OportunidadId.HasValue && !dto.LeadId.HasValue) {
+                    var op = await context.Oportunidades.FirstOrDefaultAsync(o => o.OportunidadId == dto.OportunidadId && o.Activo);
+                    if(op==null) return ApiResponse<ActividadCrmDTO>.fail(404, null, "Oportunidad no encontrada.");
+                    dto.LeadId = op.LeadId;
+              }
+
+              // Marcar como contactado si es la primera actividad del lead
+              var lead = await context.Leads.FirstOrDefaultAsync(l => l.LeadId == dto.LeadId && l.Activo);
+              if(lead == null) return ApiResponse<ActividadCrmDTO>.fail(404, null, "Lead no encontrado.");
+              if(lead.SinContactar)
+              {
+                   lead.MarcarContactado();
+                   lead.RegistrarActividad();
+                   lead.UsuarioModificaId = usuarioId;
+                   lead.FechaModificacion = TimeHelper.Now;
+              }
+
                var actividad = new ActividadCrm
                {
-                    LeadId = dto.LeadId,
+                    LeadId = dto.LeadId!.Value,
                     OportunidadId = dto.OportunidadId,
                     RealizadaPorId = usuarioId,
                     Tipo = dto.Tipo,
@@ -162,7 +170,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Crm
 
             if (sucursalId.HasValue)
                 query = query.Where(a =>
-                    (a.Lead != null && a.Lead.SucursalId == sucursalId.Value) ||
+                    (a.Lead != null && a.Lead.SucursalId.HasValue && a.Lead.SucursalId.Value == sucursalId.Value) ||
                     (a.Oportunidad != null && a.Oportunidad.SucursalId == sucursalId.Value));
 
             var actividades = await query.OrderBy(a => a.FechaProgramada).ToListAsync();

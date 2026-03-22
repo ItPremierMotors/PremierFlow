@@ -95,6 +95,13 @@ namespace PremierFlow.Domain.Entities
             Estado = EstadoCotizacion.Rechazada;
         }
 
+        public void Cancelar()
+        {
+            if(Estado !=EstadoCotizacion.Vigente)
+                throw new InvalidOperationException("Solo se puede cancelar cotizaciones vigentes");
+            Estado=EstadoCotizacion.Cancelada;
+        }
+
         #endregion
     }
 }

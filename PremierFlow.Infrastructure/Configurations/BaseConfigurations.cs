@@ -22,10 +22,31 @@ namespace PremierFlow.Infrastructure.Configurations
             builder.Property(e => e.Ciudad).HasColumnName("ciudad").HasMaxLength(100).IsRequired();
             builder.Property(e => e.Direccion).HasColumnName("direccion").HasMaxLength(500);
             builder.Property(e => e.Activa).HasColumnName("activa").HasDefaultValue(true);
-
+            builder.Property(e=>e.LineaNegocio).HasConversion<string>().HasMaxLength(30);
             builder.HasIndex(e => e.Codigo).IsUnique();
         }
     }
+
+public class VendedorSucursalConfiguration : IEntityTypeConfiguration<VendedorSucursal>
+{
+    public void Configure(EntityTypeBuilder<VendedorSucursal> builder)
+    {
+        builder.ToTable("vendedores_sucursal");
+        builder.HasKey(e => e.VendedorSucursalId);
+
+        builder.Property(e => e.VendedorSucursalId).HasColumnName("vendedor_sucursal_id");
+        builder.Property(e => e.VendedorId).HasColumnName("vendedor_id").HasMaxLength(450).IsRequired();
+        builder.Property(e => e.SucursalId).HasColumnName("sucursal_id");
+        builder.Property(e => e.UltimaAsignacion).HasColumnName("ultima_asignacion");
+        builder.Property(e => e.EstaActivo).HasColumnName("esta_activo").HasDefaultValue(true);
+
+        // Relaciones
+        builder.HasOne(e => e.Sucursal).WithMany().HasForeignKey(e => e.SucursalId).OnDelete(DeleteBehavior.Restrict);
+
+        // Índice único: un vendedor no puede estar duplicado en la misma sucursal
+        builder.HasIndex(e => new { e.VendedorId, e.SucursalId }).IsUnique().HasDatabaseName("ix_vendedor_sucursal_unico");
+    }
+}
 
     public class UbicacionConfiguration : IEntityTypeConfiguration<Ubicacion>
     {

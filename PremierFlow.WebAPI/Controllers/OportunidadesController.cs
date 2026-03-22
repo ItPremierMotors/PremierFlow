@@ -95,16 +95,7 @@ namespace PremierFlow.WebAPI.Controllers
             return StatusCode(result.StatusCode, result);
         }
 
-        [HttpPut("{oportunidadId}/AvanzarEtapa")]
-        public async Task<IActionResult> AvanzarEtapa(int oportunidadId)
-        {
-            var userId = GetUserId();
-            if (string.IsNullOrEmpty(userId))
-                return Unauthorized(new { Message = "Usuario no autenticado." });
-
-            var result = await _oportunidadService.AvanzarEtapaAsync(oportunidadId, userId);
-            return StatusCode(result.StatusCode, result);
-        }
+        
 
         [HttpPut("CambiarEtapa")]
         public async Task<IActionResult> CambiarEtapa([FromBody] CambiarEtapaDTO dto)
@@ -117,19 +108,9 @@ namespace PremierFlow.WebAPI.Controllers
             return StatusCode(result.StatusCode, result);
         }
 
-        [HttpPut("{oportunidadId}/RetrocederEtapa")]
-        public async Task<IActionResult> RetrocederEtapa(int oportunidadId)
-        {
-            var userId = GetUserId();
-            if (string.IsNullOrEmpty(userId))
-                return Unauthorized(new { Message = "Usuario no autenticado." });
-
-            var result = await _oportunidadService.RetrocederEtapaAsync(oportunidadId, userId);
-            return StatusCode(result.StatusCode, result);
-        }
 
         [HttpPut("CerrarGanada")]
-        public async Task<IActionResult> CerrarGanada([FromBody] CerrarOportunidadDTO dto)
+        public async Task<IActionResult> CerrarGanada([FromBody] CerrarGanadaDTO dto)
         {
             var userId = GetUserId();
             if (string.IsNullOrEmpty(userId))
@@ -161,15 +142,6 @@ namespace PremierFlow.WebAPI.Controllers
             return StatusCode(result.StatusCode, result);
         }
 
-        [HttpPut("{oportunidadId}/VincularVehiculo/{vehiculoId}")]
-        public async Task<IActionResult> VincularVehiculo(int oportunidadId, int vehiculoId)
-        {
-            var userId = GetUserId();
-            if (string.IsNullOrEmpty(userId))
-                return Unauthorized(new { Message = "Usuario no autenticado." });
-
-            var result = await _oportunidadService.VincularVehiculoAsync(oportunidadId, vehiculoId, userId);
-            return StatusCode(result.StatusCode, result);
-        }
+       
     }
 }

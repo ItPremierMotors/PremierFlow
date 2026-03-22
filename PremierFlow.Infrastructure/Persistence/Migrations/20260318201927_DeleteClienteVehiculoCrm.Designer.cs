@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PremierFlow.Infrastructure.Persistence;
 
@@ -11,9 +12,11 @@ using PremierFlow.Infrastructure.Persistence;
 namespace PremierFlow.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(PremierFlowDbContext))]
-    partial class PremierFlowDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260318201927_DeleteClienteVehiculoCrm")]
+    partial class DeleteClienteVehiculoCrm
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1199,7 +1202,7 @@ namespace PremierFlow.Infrastructure.Persistence.Migrations
                         .HasColumnType("decimal(12,2)")
                         .HasColumnName("presupuesto_estimado");
 
-                    b.Property<int?>("SucursalId")
+                    b.Property<int>("SucursalId")
                         .HasColumnType("int")
                         .HasColumnName("sucursal_id");
 
@@ -1207,11 +1210,6 @@ namespace PremierFlow.Infrastructure.Persistence.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)")
                         .HasColumnName("telefono");
-
-                    b.Property<string>("TipoVehiculoInteres")
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
-                        .HasColumnName("tipo_vehiculo_interes");
 
                     b.Property<string>("UsuarioCreaId")
                         .HasMaxLength(450)
@@ -1244,9 +1242,6 @@ namespace PremierFlow.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("SucursalId")
                         .HasDatabaseName("ix_leads_sucursal");
-
-                    b.HasIndex("TipoVehiculoInteres")
-                        .HasDatabaseName("ix_leads_tipo_vehiculo");
 
                     b.HasIndex("VendedorAsignadoId")
                         .HasDatabaseName("ix_leads_vendedor");
@@ -2923,7 +2918,8 @@ namespace PremierFlow.Infrastructure.Persistence.Migrations
                     b.HasOne("PremierFlow.Domain.Entities.Sucursal", "Sucursal")
                         .WithMany()
                         .HasForeignKey("SucursalId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.Navigation("Sucursal");
                 });

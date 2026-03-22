@@ -1,3 +1,4 @@
+using PremierFlow.Domain.Common;
 using PremierFlow.Domain.Enums;
 
 namespace PremierFlow.Application.Dtos.Crm
@@ -15,23 +16,25 @@ namespace PremierFlow.Application.Dtos.Crm
         public string? DetalleOrigen { get; set; }
         public EstadoLead Estado { get; set; }
         public DateTime FechaIngreso { get; set; }
+        public DateTime? FechaUltimaActividad { get; set; }
         public DateTime? FechaPrimeraRespuesta { get; set; }
         public string? VehiculoInteres { get; set; }
+        public TipoVehiculo? TipoVehiculoInteres { get; set; }
         public decimal? PresupuestoEstimado { get; set; }
 
         // Datos relacionados
-        public int SucursalId { get; set; }
+        public int? SucursalId { get; set; }
         public string? SucursalNombre { get; set; }
         public string? VendedorAsignadoId { get; set; }
         public string? VendedorNombre { get; set; }
-        public int? ClienteId { get; set; }
 
         // Extras para UI
         public string EstadoNombre => Estado.ToString();
         public string OrigenNombre => Origen.ToString();
-        public bool SinContactar => Estado == EstadoLead.Nuevo && FechaPrimeraRespuesta == null;
+        public bool SinContactar => (Estado == EstadoLead.Nuevo || Estado == EstadoLead.Incompleto) && FechaPrimeraRespuesta == null;
         public int CantidadOportunidades { get; set; }
         public int CantidadActividades { get; set; }
+        public int? DiasInactivo{get;set;}
     }
 
     public class CreateLeadDTO
@@ -43,11 +46,11 @@ namespace PremierFlow.Application.Dtos.Crm
         public string? Ciudad { get; set; }
         public OrigenLead Origen { get; set; }
         public string? DetalleOrigen { get; set; }
-        public int SucursalId { get; set; }
-        public string? VendedorAsignadoId { get; set; }
+        public int? SucursalId { get; set; }
+        public string? VendedorAsignadoId { get; set; } 
         public string? VehiculoInteres { get; set; }
+        public TipoVehiculo? TipoVehiculoInteres { get; set; }
         public decimal? PresupuestoEstimado { get; set; }
-        public int? ClienteId { get; set; }
     }
 
     public class UpdateLeadDTO
@@ -61,13 +64,12 @@ namespace PremierFlow.Application.Dtos.Crm
         public string? DetalleOrigen { get; set; }
         public string? VehiculoInteres { get; set; }
         public decimal? PresupuestoEstimado { get; set; }
-        public int? ClienteId { get; set; }
+        public TipoVehiculo? TipoVehiculoInteres { get; set; }
     }
 
     public class CalificarLeadDTO
     {
         public int LeadId { get; set; }
-        public int? ClienteId { get; set; }
     }
 
     public class DescartarLeadDTO
@@ -80,5 +82,12 @@ namespace PremierFlow.Application.Dtos.Crm
     {
         public int LeadId { get; set; }
         public string VendedorId { get; set; } = null!;
+    }
+    public class AlertasLeadsFriosDTO
+    {
+        public List<LeadDTO> SinContactar { get; set; } = new();    // Nunca contactados
+        public List<LeadDTO> Frios { get; set; } = new();           // 3-7 días
+        public List<LeadDTO> MuyFrios { get; set; } = new();        // 7-30 días
+        public List<LeadDTO> CandidatosDescarte { get; set; } = new(); // +30 días
     }
 }

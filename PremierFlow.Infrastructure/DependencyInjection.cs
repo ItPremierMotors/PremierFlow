@@ -9,6 +9,7 @@ using PremierFlow.Application.Interfaces.Taller;
 using PremierFlow.Application.Interfaces.Vehiculo;
 using PremierFlow.Infrastructure.Identity;
 using PremierFlow.Infrastructure.Persistence;
+using PremierFlow.Infrastructure.Persistence.Helpers;
 using PremierFlow.Infrastructure.Persistence.Repositories.Services.AuthServices;
 using PremierFlow.Infrastructure.Persistence.Repositories.Services.Catalogo.IEstadoOsServices;
 using PremierFlow.Infrastructure.Persistence.Repositories.Services.Catalogo.MarcaServices;
@@ -85,6 +86,7 @@ namespace PremierFlow.Infrastructure
             services.AddScoped<IEstadoOsService, EstadoOsService>();
             services.AddScoped<ISucursalService, SucursalService>();
             services.AddScoped<IUbicacionService, UbicacionService>();
+            services.AddScoped<IVendedorSucursalService, VendedorSucursalService>();
 
             // Fase 2: Cliente y Vehículo
             services.AddScoped<IClienteService, ClienteService>();
@@ -103,6 +105,7 @@ namespace PremierFlow.Infrastructure
             services.AddScoped<IDashboardService, DashboardService>();
             
            // Fase 5: CRM
+            services.AddScoped<GeneradorCodigos>();
             services.AddScoped<ILeadService, LeadService>();
             services.AddScoped<IOportunidadService, OportunidadService>();
             services.AddScoped<IActividadCrmService, ActividadCrmService>();

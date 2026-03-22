@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+﻿using System.Reflection.Metadata.Ecma335;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using PremierFlow.Domain.Entities;
 using PremierFlow.Infrastructure.Identity;
@@ -14,6 +15,7 @@ namespace PremierFlow.Infrastructure.Persistence
 
         public DbSet<Sucursal> Sucursales { get; set; } = null!;
         public DbSet<Ubicacion> Ubicaciones { get; set; } = null!;
+        public DbSet<VendedorSucursal> VendedorSucursales {get; set;} = null!;
         #endregion
 
         #region Catálogos de Vehículos

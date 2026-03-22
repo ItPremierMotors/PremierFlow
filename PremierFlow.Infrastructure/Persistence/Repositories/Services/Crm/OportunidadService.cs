@@ -8,6 +8,7 @@ using PremierFlow.Domain.Common;
 using PremierFlow.Domain.Entities;
 using PremierFlow.Domain.Enums;
 using PremierFlow.Infrastructure.Identity;
+using PremierFlow.Infrastructure.Persistence.Helpers;
 
 namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Crm
 {
@@ -15,33 +16,16 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Crm
     {
         private readonly PremierFlowDbContext context;
         private readonly UserManager<ApplicationUser> userManager;
+        private readonly GeneradorCodigos generadorCodigos;
 
-        public OportunidadService(PremierFlowDbContext context, UserManager<ApplicationUser> userManager)
+        public OportunidadService(PremierFlowDbContext context, UserManager<ApplicationUser> userManager, GeneradorCodigos generadorCodigos)
         {
             this.context = context;
             this.userManager = userManager;
+            this.generadorCodigos = generadorCodigos;
         }
 
-        public async Task<ApiResponse<bool>> AvanzarEtapaAsync(int oportunidadId, string usuarioId)
-        {
-            // Este método avanzaría la oportunidad a la siguiente etapa del pipeline.
-            var op=await context.Oportunidades.FirstOrDefaultAsync(o=>o.OportunidadId == oportunidadId && o.Activo);
-            if(op==null)
-                return ApiResponse<bool>.fail(404,null,"Oportunidad no encontrada");
-            try
-            {
-                op.AvanzarEtapa();
-            }
-            catch (System.InvalidOperationException ex)
-            {
-                return ApiResponse<bool>.fail(400,null,ex.Message);
-            }
-            op.UsuarioModificaId=usuarioId;
-            op.FechaModificacion=TimeHelper.Now;
-            if(await context.SaveChangesAsync()>0) 
-                return ApiResponse<bool>.ok(true,"Oportunidad avanzada a la siguiente etapa");
-            return ApiResponse<bool>.fail(500,null,"No se pudo avanzar la oportunidad");
-        }
+
 
         public async Task<ApiResponse<bool>> CancelarAsync(CerrarOportunidadDTO dto, string usuarioId)
         {
@@ -50,7 +34,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Crm
                 return ApiResponse<bool>.fail(404, null, "Oportunidad no encontrada");
             try
             {
-                op.Cancelar(dto.MotivoResultado ?? "Sin motivo especificado");
+                op.Cancelar(dto.MotivoResultado);
             }
             catch (InvalidOperationException ex)
             {
@@ -62,7 +46,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Crm
             return ApiResponse<bool>.ok(true, "Oportunidad cancelada");
         }
 
-        public async Task<ApiResponse<bool>> CerrarGanadaAsync(CerrarOportunidadDTO dto, string usuarioId)
+        public async Task<ApiResponse<bool>> CerrarGanadaAsync(CerrarGanadaDTO dto, string usuarioId)
         {
             var op = await context.Oportunidades
                 .Include(o => o.Cotizaciones)
@@ -92,7 +76,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Crm
                 return ApiResponse<bool>.fail(404, null, "Oportunidad no encontrada");
             try
             {
-                op.CerrarPerdida(dto.MotivoResultado ?? "Sin motivo especificado");
+                op.CerrarPerdida(dto.MotivoResultado);
             }
             catch (InvalidOperationException ex)
             {
@@ -106,47 +90,46 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Crm
 
         public async Task<ApiResponse<OportunidadDTO>> CreateAsync(CreateOportunidadDTO dto, string usuarioId)
         {
-            var anio = TimeHelper.Now.Year;
-            var prefijo = $"OP-{anio}";
-            var ultimoCodigo = await context.Oportunidades
-                .Where(o => o.CodigoOportunidad.StartsWith(prefijo))
-                .OrderByDescending(o => o.CodigoOportunidad)
-                .Select(o => o.CodigoOportunidad)
-                .FirstOrDefaultAsync();
+            // Validar que el lead exista y esté calificado
+            var lead = await context.Leads.FirstOrDefaultAsync(l => l.LeadId == dto.LeadId && l.Activo);
+            if (lead == null)
+                return ApiResponse<OportunidadDTO>.fail(404, null, "Lead no encontrado");
 
-            var siguiente = 1;
-            if (ultimoCodigo != null)
-            {
-                var partes = ultimoCodigo.Split('-');
-                siguiente = int.Parse(partes[2]) + 1;
-            }
-            var codigo = $"{prefijo}-{siguiente:D4}";
-            var oportunidad = new Oportunidad
-            {
-                CodigoOportunidad = codigo,
-                LeadId = dto.LeadId,
-                ClienteId = dto.ClienteId,
-                VehiculoId = dto.VehiculoId,
-                VendedorId = dto.VendedorId,
-                SucursalId = dto.SucursalId,
-                ProbabilidadCierre = dto.ProbabilidadCierre,
-                FechaCierreEstimada = dto.FechaCierreEstimada,
-                Etapa = EtapaOportunidad.Prospeccion,
-                Activo = true,
-                UsuarioCreaId = usuarioId,
-                FechaCreacion = TimeHelper.Now
-            };
-
-            context.Oportunidades.Add(oportunidad);
-            //marcar leads como convertido
-            var lead = await context.Leads.FirstOrDefaultAsync(l => l.LeadId == dto.LeadId);
-            if (lead != null)
+            try
             {
                 lead.Convertir();
-                lead.UsuarioModificaId = usuarioId;
-                lead.FechaModificacion = TimeHelper.Now;
             }
-            await context.SaveChangesAsync();
+            catch (InvalidOperationException ex)
+            {
+                return ApiResponse<OportunidadDTO>.fail(400, null, ex.Message);
+            }
+
+            lead.UsuarioModificaId = usuarioId;
+            lead.FechaModificacion = TimeHelper.Now;
+
+            var oportunidad = await generadorCodigos.EjecutarConReintento(
+                async (codigo) =>
+                {
+                    var nuevaOp = new Oportunidad
+                    {
+                        CodigoOportunidad = codigo,
+                        LeadId = dto.LeadId,
+                        ModeloId = dto.ModeloId,
+                        VendedorId = dto.VendedorId,
+                        SucursalId = dto.SucursalId,
+                        ProbabilidadCierre = dto.ProbabilidadCierre,
+                        FechaCierreEstimada = dto.FechaCierreEstimada,
+                        Activo = true,
+                        UsuarioCreaId = usuarioId,
+                        FechaCreacion = TimeHelper.Now
+                    };
+                    context.Oportunidades.Add(nuevaOp);
+                    await context.SaveChangesAsync();
+                    return nuevaOp;
+                },
+                generadorCodigos.GenerarCodigoOportunidadAsync
+            );
+
             var created = await GetOportunidadQuery().FirstOrDefaultAsync(o => o.OportunidadId == oportunidad.OportunidadId);
             return ApiResponse<OportunidadDTO>.ok(await MapToDto(created!), "Oportunidad creada exitosamente");
         }
@@ -227,8 +210,8 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Crm
             var op=await context.Oportunidades
                 .Include(o => o.Lead)
                 .Include(o => o.Sucursal)
-                .Include(o => o.Cliente)
-                .Include(o => o.Vehiculo)
+                .Include(o => o.Modelo)
+                    .ThenInclude(m => m!.Marca)
                 .Include(o => o.Actividades.Where(a => a.Activo))
                 .Include(o => o.Notas.Where(n => n.Activo))
                 .Include(o => o.Cotizaciones.Where(c => c.Activo))
@@ -252,14 +235,12 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Crm
                 FechaUltimaActividad = op.FechaUltimaActividad,
                 LeadId = op.LeadId,
                 LeadNombre = op.Lead?.NombreCompleto ?? "",
-                ClienteId = op.ClienteId,
-                ClienteNombre = op.Cliente?.NombreCompleto,
-                VehiculoId = op.VehiculoId,
-                VehiculoDescripcion = op.Vehiculo?.DescripcionCompleta,
                 VendedorId = op.VendedorId,
                 VendedorNombre = vendedor?.NombreCompleto ?? "",
                 SucursalId = op.SucursalId,
                 SucursalNombre = op.Sucursal?.Nombre ?? "",
+                ModeloId = op.ModeloId,
+                ModeloNombre = op.Modelo != null ? $"{op.Modelo.Marca?.Nombre} {op.Modelo.Nombre}" : null,
                 CantidadActividades = op.Actividades?.Count(a => a.Activo) ?? 0,
                 CantidadCotizaciones = op.Cotizaciones?.Count(c => c.Activo) ?? 0,
                 Actividades = op.Actividades?.Where(a => a.Activo).Select(MapActividadToDto).ToList() ?? [],
@@ -326,26 +307,6 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Crm
             return ApiResponse<bool>.fail(500, null, "No se pudo cambiar la etapa");
         }
 
-        public async Task<ApiResponse<bool>> RetrocederEtapaAsync(int oportunidadId, string usuarioId)
-        {
-            var op=await context.Oportunidades.FirstOrDefaultAsync(o => o.OportunidadId == oportunidadId && o.Activo); 
-            if(op==null)
-                return ApiResponse<bool>.fail(404,null,"Oportunidad no encontrada");
-            try
-            {
-                op.RetrocederEtapa();
-            }
-            catch (System.InvalidOperationException ex)
-            {
-                return ApiResponse<bool>.fail(400,null,ex.Message);
-            }
-            op.UsuarioModificaId=usuarioId;
-            op.FechaModificacion=TimeHelper.Now;
-            if(await context.SaveChangesAsync()>0) 
-                return ApiResponse<bool>.ok(true,"Oportunidad retrocedida a la etapa anterior");
-            return ApiResponse<bool>.fail(500,null,"No se pudo retroceder la oportunidad");
-
-        }
 
         public async Task<ApiResponse<OportunidadDTO>> UpdateAsync(UpdateOportunidadDTO dto, string usuarioId)
         {
@@ -358,8 +319,6 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Crm
             if (!op.EstaAbierta)
                 return ApiResponse<OportunidadDTO>.fail(400, null, "No se puede editar una oportunidad cerrada");
 
-            op.ClienteId = dto.ClienteId;
-            op.VehiculoId = dto.VehiculoId;
             op.ProbabilidadCierre = dto.ProbabilidadCierre;
             op.FechaCierreEstimada = dto.FechaCierreEstimada;
             op.UsuarioModificaId = usuarioId;
@@ -371,32 +330,6 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Crm
             return ApiResponse<OportunidadDTO>.ok(await MapToDto(updated!), "Oportunidad actualizada exitosamente");
         }
 
-        public async Task<ApiResponse<bool>> VincularVehiculoAsync(int oportunidadId, int vehiculoId, string usuarioId)
-        {
-            var op = await context.Oportunidades.FirstOrDefaultAsync(o => o.OportunidadId == oportunidadId && o.Activo);
-            if (op == null)
-                return ApiResponse<bool>.fail(404, null, "Oportunidad no encontrada");
-
-            if (!op.EstaAbierta)
-                return ApiResponse<bool>.fail(400, null, "No se puede modificar una oportunidad cerrada");
-
-            var vehiculo = await context.Vehiculos.FirstOrDefaultAsync(v => v.VehiculoId == vehiculoId && v.Activo);
-            if (vehiculo == null)
-                return ApiResponse<bool>.fail(404, null, "Vehículo no encontrado");
-
-            if (!vehiculo.DisponibleParaVenta)
-                return ApiResponse<bool>.fail(400, null, $"El vehículo no está disponible para venta (Estado: {vehiculo.Estado})");
-
-            op.VehiculoId = vehiculoId;
-            op.UsuarioModificaId = usuarioId;
-            op.FechaModificacion = TimeHelper.Now;
-
-            await context.SaveChangesAsync();
-            return ApiResponse<bool>.ok(true, "Vehículo vinculado a la oportunidad");
-        }
-
-        // Aquí irían los métodos para manejar la lógica de negocio relacionada con las oportunidades,
-        // como crear, actualizar, cerrar oportunidades, etc.
         #region Helpers
 
         private IQueryable<Oportunidad> GetOportunidadQuery()
@@ -404,8 +337,6 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Crm
             return context.Oportunidades
                 .Include(o => o.Lead)
                 .Include(o => o.Sucursal)
-                .Include(o => o.Cliente)
-                .Include(o => o.Vehiculo)
                 .Include(o => o.Actividades.Where(a => a.Activo))
                 .Include(o => o.Cotizaciones.Where(c => c.Activo))
                 .Include(o => o.Modelo)
@@ -429,16 +360,13 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.Crm
                 FechaUltimaActividad = o.FechaUltimaActividad,
                 LeadId = o.LeadId,
                 LeadNombre = o.Lead?.NombreCompleto ?? "",
-                ClienteId = o.ClienteId,
-                ClienteNombre = o.Cliente?.NombreCompleto,
-                VehiculoId = o.VehiculoId,
-                VehiculoDescripcion = o.Vehiculo?.DescripcionCompleta,
                 VendedorId = o.VendedorId,
                 VendedorNombre = vendedor?.NombreCompleto ?? "",
                 SucursalId = o.SucursalId,
                 SucursalNombre = o.Sucursal?.Nombre ?? "",
                 CantidadActividades = o.Actividades?.Count(a => a.Activo) ?? 0,
                 CantidadCotizaciones = o.Cotizaciones?.Count(c => c.Activo) ?? 0,
+                ModeloId = o.ModeloId,
                 ModeloNombre = o.Modelo != null ? $"{o.Modelo.Marca?.Nombre} {o.Modelo.Nombre}" : null
             };
         }

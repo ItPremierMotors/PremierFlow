@@ -15,7 +15,7 @@ namespace PremierFlow.Domain.Entities
         /// <summary>
         /// Lead asociado (puede ser null si la actividad es solo de una oportunidad).
         /// </summary>
-        public int? LeadId { get; set; }
+        public int LeadId { get; set; }
 
         /// <summary>
         /// Oportunidad asociada (puede ser null si el lead aún no se convirtió).

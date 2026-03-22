@@ -27,6 +27,7 @@ namespace PremierFlow.Infrastructure.Configurations
             builder.Property(e => e.VendedorAsignadoId).HasColumnName("vendedor_asignado_id").HasMaxLength(450);
 
             builder.Property(e => e.Estado).HasColumnName("estado").HasConversion<string>().HasMaxLength(30);
+            builder.Property(e => e.FechaUltimaActividad).HasColumnName("fecha_ultima_actividad");
             builder.Property(e => e.FechaIngreso).HasColumnName("fecha_ingreso");
             builder.Property(e => e.FechaPrimeraRespuesta).HasColumnName("fecha_primera_respuesta");
             builder.Property(e => e.FechaConversion).HasColumnName("fecha_conversion");
@@ -34,9 +35,8 @@ namespace PremierFlow.Infrastructure.Configurations
             builder.Property(e => e.MotivoDescarte).HasColumnName("motivo_descarte").HasMaxLength(500);
 
             builder.Property(e => e.VehiculoInteres).HasColumnName("vehiculo_interes").HasMaxLength(200);
+            builder.Property(e => e.TipoVehiculoInteres).HasColumnName("tipo_vehiculo_interes").HasConversion<string>().HasMaxLength(20);
             builder.Property(e => e.PresupuestoEstimado).HasColumnName("presupuesto_estimado").HasPrecision(12, 2);
-
-            builder.Property(e => e.ClienteId).HasColumnName("cliente_id");
 
             // Auditoría (de SoftDeletableEntity)
             builder.Property(e => e.Activo).HasColumnName("activo").HasDefaultValue(true);
@@ -46,15 +46,14 @@ namespace PremierFlow.Infrastructure.Configurations
             builder.Property(e => e.FechaModificacion).HasColumnName("fecha_modificacion");
 
             // Relaciones
-            builder.HasOne(e => e.Sucursal).WithMany().HasForeignKey(e => e.SucursalId).OnDelete(DeleteBehavior.Restrict);
-            builder.HasOne(e => e.Cliente).WithMany().HasForeignKey(e => e.ClienteId).OnDelete(DeleteBehavior.Restrict);
+            builder.HasOne(e => e.Sucursal).WithMany().HasForeignKey(e => e.SucursalId).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
 
             // Índices
             builder.HasIndex(e => e.CodigoLead).IsUnique().HasDatabaseName("ix_leads_codigo");
             builder.HasIndex(e => e.Estado).HasDatabaseName("ix_leads_estado");
             builder.HasIndex(e => e.SucursalId).HasDatabaseName("ix_leads_sucursal");
             builder.HasIndex(e => e.VendedorAsignadoId).HasDatabaseName("ix_leads_vendedor");
-
+           builder.HasIndex(e => e.TipoVehiculoInteres).HasDatabaseName("ix_leads_tipo_vehiculo");
             // Ignorar propiedades calculadas
             builder.Ignore(e => e.SinContactar);
             builder.Ignore(e => e.FueConvertido);
@@ -76,8 +75,6 @@ namespace PremierFlow.Infrastructure.Configurations
             builder.Property(e => e.CodigoOportunidad).HasColumnName("codigo_oportunidad").HasMaxLength(20).IsRequired();
 
             builder.Property(e => e.LeadId).HasColumnName("lead_id");
-            builder.Property(e => e.ClienteId).HasColumnName("cliente_id");
-            builder.Property(e => e.VehiculoId).HasColumnName("vehiculo_id");
             builder.Property(e => e.ModeloId).HasColumnName("modelo_id");
             builder.Property(e => e.VendedorId).HasColumnName("vendedor_id").HasMaxLength(450).IsRequired();
             builder.Property(e => e.SucursalId).HasColumnName("sucursal_id");
@@ -100,8 +97,6 @@ namespace PremierFlow.Infrastructure.Configurations
 
             // Relaciones
             builder.HasOne(e => e.Lead).WithMany(l => l.Oportunidades).HasForeignKey(e => e.LeadId).OnDelete(DeleteBehavior.Restrict);
-            builder.HasOne(e => e.Cliente).WithMany().HasForeignKey(e => e.ClienteId).OnDelete(DeleteBehavior.Restrict);
-            builder.HasOne(e => e.Vehiculo).WithMany().HasForeignKey(e => e.VehiculoId).OnDelete(DeleteBehavior.Restrict);
             builder.HasOne(e => e.Sucursal).WithMany().HasForeignKey(e => e.SucursalId).OnDelete(DeleteBehavior.Restrict);
             builder.HasOne(e => e.Modelo).WithMany().HasForeignKey(e => e.ModeloId).OnDelete(DeleteBehavior.SetNull);
 
@@ -154,8 +149,8 @@ namespace PremierFlow.Infrastructure.Configurations
             builder.Property(e => e.FechaModificacion).HasColumnName("fecha_modificacion");
 
             // Relaciones
-            builder.HasOne(e => e.Lead).WithMany(l => l.Actividades).HasForeignKey(e => e.LeadId).OnDelete(DeleteBehavior.Restrict);
-            builder.HasOne(e => e.Oportunidad).WithMany(o => o.Actividades).HasForeignKey(e => e.OportunidadId).OnDelete(DeleteBehavior.Restrict);
+            builder.HasOne(e => e.Lead).WithMany(l => l.Actividades).HasForeignKey(e => e.LeadId).IsRequired().OnDelete(DeleteBehavior.Restrict);
+            builder.HasOne(e => e.Oportunidad).WithMany(o => o.Actividades).HasForeignKey(e => e.OportunidadId).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
 
             // Índices
             builder.HasIndex(e => e.LeadId).HasDatabaseName("ix_actividades_crm_lead");
