@@ -83,15 +83,6 @@ namespace PremierFlow.Application.Common
         // Dashboard
         public const string DashboardVer = "Dashboard.Ver";
 
-        // Usuarios y Roles (admin)
-        public const string UsuarioVer = "Usuario.Ver";
-        public const string UsuarioCrear = "Usuario.Crear";
-        public const string UsuarioEditar = "Usuario.Editar";
-        public const string RolVer = "Rol.Ver";
-        public const string RolCrear = "Rol.Crear";
-        public const string RolEditar = "Rol.Editar";
-        public const string PermisoVer = "Permiso.Ver";
-        public const string PermisoEditar = "Permiso.Editar";
 
         public static List<string> All => new()
         {
@@ -106,9 +97,6 @@ namespace PremierFlow.Application.Common
             TecnicoVer, TecnicoAsignar,
             ReporteVer,
             DashboardVer,
-            UsuarioVer, UsuarioCrear, UsuarioEditar,
-            RolVer, RolCrear, RolEditar,
-            PermisoVer, PermisoEditar,
             CatalogoMarcaVer, CatalogoMarcaCrear, CatalogoMarcaEditar, CatalogoMarcaEliminar,
             CatalogoModeloVer, CatalogoModeloCrear, CatalogoModeloEditar, CatalogoModeloEliminar,
             CatalogoVersionVer, CatalogoVersionCrear, CatalogoVersionEditar, CatalogoVersionEliminar,

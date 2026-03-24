@@ -28,7 +28,8 @@ namespace PremierFlow.Infrastructure.Identity
                 "Aduanas",
                 "Contabilidad",
                 "JefeVentas",
-                "AsesorVentas"
+                "AsesorVentas",
+                "Tecnico"
             };
 
             foreach (var roleName in roles)
