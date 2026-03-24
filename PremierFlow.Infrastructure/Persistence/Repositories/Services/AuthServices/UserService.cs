@@ -170,9 +170,19 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.AuthServi
                         "Ya existe un usuario con este email");
                 }
 
+                // Generar username único: si ya existe, agregar sufijo numérico (ALOPEZ, ALOPEZ2, ALOPEZ3...)
+                var baseUserName = request.UserName;
+                var userName = baseUserName;
+                int sufijo = 2;
+                while (await _userManager.FindByNameAsync(userName) != null)
+                {
+                    userName = baseUserName + sufijo;
+                    sufijo++;
+                }
+
                 var newUser = new ApplicationUser
                 {
-                    UserName = request.UserName,
+                    UserName = userName,
                     Email = request.Email,
                     NombreCompleto = request.NombreCompleto ?? "N/A",
                     Activo = request.Activo,
