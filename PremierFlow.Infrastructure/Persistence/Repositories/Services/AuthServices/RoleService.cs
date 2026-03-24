@@ -298,8 +298,7 @@ namespace PremierFlow.Infrastructure.Persistence.Repositories.Services.AuthServi
         {
             name = name.Trim();
             if (string.IsNullOrEmpty(name)) return name;
-            //return char.ToUpper(name[0]) + name.Substring(1).ToLower();
-            return name.ToUpper();
+            return System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(name.ToLower());
         }
 
         #endregion
