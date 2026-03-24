@@ -269,8 +269,7 @@ namespace PremierFlow.Domain.Enums
     {
         Pendiente = 1,
         Completada = 2,
-        Cancelada = 3,
-        Vencida = 4
+        Cancelada = 3
     }
 
     public enum EstadoCotizacion

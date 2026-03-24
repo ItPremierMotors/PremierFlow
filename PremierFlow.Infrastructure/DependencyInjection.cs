@@ -103,7 +103,7 @@ namespace PremierFlow.Infrastructure
 
             // Fase 4: Dashboard
             services.AddScoped<IDashboardService, DashboardService>();
-            
+            services.AddScoped<IDashboardCrmService, DashboardCrmService>();
            // Fase 5: CRM
             services.AddScoped<GeneradorCodigos>();
             services.AddScoped<ILeadService, LeadService>();
